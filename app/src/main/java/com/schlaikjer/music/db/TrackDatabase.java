@@ -4,7 +4,9 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
+import android.util.Log;
 
+import com.schlaikjer.msgs.TrackOuterClass;
 import com.schlaikjer.music.model.Track;
 
 import java.util.ArrayList;
@@ -35,7 +37,7 @@ public class TrackDatabase {
         addTrack(helper.getWritableDatabase(), track);
     }
 
-    public void addTrack(Iterable<Track> records) {
+    public void addTracks(Iterable<Track> records) {
         SQLiteDatabase database = helper.getWritableDatabase();
         for (Track record : records) {
             addTrack(database, record);
@@ -59,6 +61,30 @@ public class TrackDatabase {
         database.insert(TrackDatabaseHelper.TracksTable.TABLE_NAME, null, contentValues);
     }
 
+    public void addPbTracks(Iterable<TrackOuterClass.Track> records) {
+        SQLiteDatabase database = helper.getWritableDatabase();
+        for (TrackOuterClass.Track record : records) {
+            addTrack(database, record);
+        }
+    }
+
+    private void addTrack(SQLiteDatabase database, TrackOuterClass.Track record) {
+        ContentValues contentValues = new ContentValues();
+
+        contentValues.put(TrackDatabaseHelper.TracksTable.COLUMN_RAW_PATH, record.getRawPath());
+        contentValues.put(TrackDatabaseHelper.TracksTable.COLUMN_PARENT_PATH, record.getParentPath());
+        contentValues.put(TrackDatabaseHelper.TracksTable.COLUMN_CHECKSUM, record.getChecksum().toByteArray());
+        contentValues.put(TrackDatabaseHelper.TracksTable.COLUMN_TAG_TITLE, record.getTagTitle());
+        contentValues.put(TrackDatabaseHelper.TracksTable.COLUMN_TAG_ARTIST, record.getTagArtist());
+        contentValues.put(TrackDatabaseHelper.TracksTable.COLUMN_TAG_ALBUM, record.getTagAlbum());
+        contentValues.put(TrackDatabaseHelper.TracksTable.COLUMN_TAG_YEAR, record.getTagYear());
+        contentValues.put(TrackDatabaseHelper.TracksTable.COLUMN_TAG_COMMENT, record.getTagComment());
+        contentValues.put(TrackDatabaseHelper.TracksTable.COLUMN_TAG_TRACK, record.getTagTrack());
+        contentValues.put(TrackDatabaseHelper.TracksTable.COLUMN_TAG_GENRE, record.getTagGenre());
+
+        database.insert(TrackDatabaseHelper.TracksTable.TABLE_NAME, null, contentValues);
+    }
+
     public List<Track> getAllTracks() {
         SQLiteDatabase database = helper.getReadableDatabase();
         Cursor c = database.query(
@@ -76,7 +102,7 @@ public class TrackDatabase {
             Track track = new Track();
             track.raw_path = c.getString(c.getColumnIndex(TrackDatabaseHelper.TracksTable.COLUMN_RAW_PATH));
             track.parent_path = c.getString(c.getColumnIndex(TrackDatabaseHelper.TracksTable.COLUMN_PARENT_PATH));
-            track.checksum = c.getString(c.getColumnIndex(TrackDatabaseHelper.TracksTable.COLUMN_CHECKSUM));
+            track.checksum = c.getBlob(c.getColumnIndex(TrackDatabaseHelper.TracksTable.COLUMN_CHECKSUM));
             track.tag_title = c.getString(c.getColumnIndex(TrackDatabaseHelper.TracksTable.COLUMN_TAG_TITLE));
             track.tag_artist = c.getString(c.getColumnIndex(TrackDatabaseHelper.TracksTable.COLUMN_TAG_ARTIST));
             track.tag_album = c.getString(c.getColumnIndex(TrackDatabaseHelper.TracksTable.COLUMN_TAG_ALBUM));

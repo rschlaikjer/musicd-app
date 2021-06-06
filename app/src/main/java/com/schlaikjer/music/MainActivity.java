@@ -4,6 +4,7 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.util.Log;
@@ -21,7 +22,17 @@ import androidx.navigation.ui.NavigationUI;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.navigation.NavigationView;
 import com.google.android.material.snackbar.Snackbar;
+import com.google.protobuf.InvalidProtocolBufferException;
+import com.schlaikjer.msgs.TrackOuterClass;
+import com.schlaikjer.music.db.TrackDatabase;
+import com.schlaikjer.music.model.NetworkOpcode;
+import com.schlaikjer.music.model.Packet;
+import com.schlaikjer.music.model.Track;
 import com.schlaikjer.music.service.NetworkService;
+import com.schlaikjer.music.utility.StorageManager;
+
+import java.io.IOException;
+import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -36,18 +47,57 @@ public class MainActivity extends AppCompatActivity {
         public void onServiceConnected(ComponentName name, IBinder binder) {
             _network_service = ((NetworkService.NetworkServiceBinder) binder).getService();
             Log.d(TAG, "Requesting DB update");
-            _network_service.reloadDatabase(new NetworkService.NetworkTxnCallback() {
-                @Override
-                public void onTxnComplete(String data) {
-                    Log.d(TAG, "DB Update Req Complete");
 
-                }
+            if (false) {
+                _network_service.reloadDatabase(new NetworkService.NetworkTxnCallback() {
+                    @Override
+                    public void onTxnComplete(Packet packet) {
+                        Log.d(TAG, "DB Update Req Complete");
+                        if (packet.opcode != NetworkOpcode.FETCH_DB) {
+                            Log.e(TAG, "Unexpected return opcode for fetch db call");
+                            return;
+                        }
+                        try {
+                            TrackOuterClass.MusicDatabase db = TrackOuterClass.MusicDatabase.parseFrom(packet.data);
+                            List<TrackOuterClass.Track> trackList = db.getTracksList();
+                            TrackDatabase.getInstance(MainActivity.this).addPbTracks(trackList);
+                            for (TrackOuterClass.Track track : trackList) {
+                                Log.d(TAG, track.getRawPath());
+                            }
+                        } catch (InvalidProtocolBufferException e) {
+                            e.printStackTrace();
+                        }
+                    }
 
-                @Override
-                public void onAbort() {
-                    Log.d(TAG, "DB Update Req Aborted");
-                }
-            });
+                    @Override
+                    public void onAbort() {
+                        Log.d(TAG, "DB Update Req Aborted");
+                    }
+                });
+            }
+
+            if (false) {
+                Track track = TrackDatabase.getInstance(MainActivity.this).getAllTracks().get(0);
+                _network_service.fetchTrack(track.checksum, new NetworkService.NetworkTxnCallback() {
+                    @Override
+                    public void onTxnComplete(Packet p) {
+                        Log.d(TAG, "Fetched track " + track.checksum);
+                        if (p.opcode != NetworkOpcode.FETCH_TRACK) {
+                            Log.e(TAG, "Unexpected return opcode for fetch track call");
+                            return;
+                        }
+
+                        // Save the track data
+                        StorageManager.saveContentFile(MainActivity.this, track.checksum, p.data);
+                    }
+
+                    @Override
+                    public void onAbort() {
+                        Log.d(TAG, "Fetch track aborted");
+                    }
+                });
+            }
+
         }
 
         @Override
@@ -55,6 +105,8 @@ public class MainActivity extends AppCompatActivity {
             _network_service = null;
         }
     };
+
+    MediaPlayer player;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -84,6 +136,17 @@ public class MainActivity extends AppCompatActivity {
 
 
         bindService(new Intent(this, NetworkService.class), _network_service_connection, Context.BIND_AUTO_CREATE);
+
+        Track track = TrackDatabase.getInstance(MainActivity.this).getAllTracks().get(0);
+        byte[] checksum = track.checksum;
+        try {
+            player = new MediaPlayer();
+            player.setDataSource(StorageManager.getContentFilePath(this, checksum));
+            player.prepare();
+            player.start();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override

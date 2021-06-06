@@ -4,7 +4,7 @@ public class Track {
 
     public String raw_path;
     public String parent_path;
-    public String checksum;
+    public byte[] checksum;
 
     public String tag_title;
     public String tag_artist;
