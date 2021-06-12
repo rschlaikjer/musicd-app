@@ -4,8 +4,10 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
+import android.util.Log;
 
 import com.schlaikjer.msgs.TrackOuterClass;
+import com.schlaikjer.music.MainActivity;
 import com.schlaikjer.music.model.Album;
 import com.schlaikjer.music.model.Track;
 
@@ -13,6 +15,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class TrackDatabase {
+
+    private static final String TAG = TrackDatabase.class.getSimpleName();
 
     private static volatile TrackDatabase instance;
 
@@ -31,6 +35,28 @@ public class TrackDatabase {
 
     private TrackDatabase(Context context) {
         this.helper = new TrackDatabaseHelper(context);
+    }
+
+    public void setDatabase(TrackOuterClass.MusicDatabase db) {
+        SQLiteDatabase database = helper.getWritableDatabase();
+        database.beginTransaction();
+
+        // Delete old track/image info
+        database.delete(TrackDatabaseHelper.TracksTable.TABLE_NAME, null, null);
+        database.delete(TrackDatabaseHelper.ImagesTable.TABLE_NAME, null, null);
+
+        // Insert the new data set
+        for (TrackOuterClass.Track track : db.getTracksList()) {
+            addTrack(database, track);
+        }
+        for (TrackOuterClass.Image image : db.getImagesList()) {
+            addImage(database, image);
+        }
+
+        database.setTransactionSuccessful();
+        database.endTransaction();
+
+        Log.d(TAG, "Database update completed with " + db.getTracksCount() + " tracks, " + db.getImagesCount() + " images.");
     }
 
     public void addTrack(Track track) {

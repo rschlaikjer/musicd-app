@@ -223,14 +223,14 @@ public class NetworkManager {
             _callbacks.put(packet.nonce, new TxnCalllback() {
                 @Override
                 public void onSuccess(Packet p) {
-                    if (packet.opcode != NetworkOpcode.FETCH_DB) {
-                        Log.e(TAG, "Unexpected return opcode for fetch db call - wanted " + NetworkOpcode.FETCH_DB + " got " + packet.opcode);
+                    if (p.opcode != NetworkOpcode.FETCH_DB) {
+                        Log.e(TAG, "Unexpected return opcode for fetch db call - wanted " + NetworkOpcode.FETCH_DB + " got " + p.opcode);
                         cb.onAbort();
                         return;
                     }
 
                     try {
-                        TrackOuterClass.MusicDatabase db = TrackOuterClass.MusicDatabase.parseFrom(packet.data);
+                        TrackOuterClass.MusicDatabase db = TrackOuterClass.MusicDatabase.parseFrom(p.data);
                         cb.onDatabaseFetched(db);
                     } catch (InvalidProtocolBufferException e) {
                         e.printStackTrace();
@@ -343,8 +343,8 @@ public class NetworkManager {
             _callbacks.put(packet.nonce, new TxnCalllback() {
                 @Override
                 public void onSuccess(Packet p) {
-                    if (packet.opcode != NetworkOpcode.UPDATE_REMOTE_DB) {
-                        Log.e(TAG, "Unexpected return opcode for rescan db call - wanted " + NetworkOpcode.FETCH_DB + " got " + packet.opcode);
+                    if (p.opcode != NetworkOpcode.UPDATE_REMOTE_DB) {
+                        Log.e(TAG, "Unexpected return opcode for rescan db call - wanted " + NetworkOpcode.FETCH_DB + " got " + p.opcode);
                         cb.onAbort();
                         return;
                     }

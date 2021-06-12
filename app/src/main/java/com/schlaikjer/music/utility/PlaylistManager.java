@@ -5,7 +5,6 @@ import android.content.Context;
 import com.schlaikjer.music.db.TrackDatabase;
 
 import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.List;
 
 public class PlaylistManager {
@@ -32,7 +31,7 @@ public class PlaylistManager {
 
     public static List<byte[]> append(Context context, byte[] track) {
         if (currentPlaylist == null) {
-            currentPlaylist = new LinkedList<>();
+            getPlaylist(context);
         }
 
         currentPlaylist.add(track);
@@ -43,7 +42,7 @@ public class PlaylistManager {
 
     public static List<byte[]> popFront(Context context) {
         if (currentPlaylist == null) {
-            currentPlaylist = new LinkedList<>();
+            getPlaylist(context);
         }
 
 

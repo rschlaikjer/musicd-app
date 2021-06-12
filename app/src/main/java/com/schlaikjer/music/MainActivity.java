@@ -87,11 +87,13 @@ public class MainActivity extends AppCompatActivity {
         NavigationUI.setupWithNavController(navigationView, navController);
 
         List<Track> allTracks = TrackDatabase.getInstance(this).getAllTracks();
-        Random rand = new Random();
-        for (int i = 0; i < 10; i++) {
-            PlaylistManager.append(this, allTracks.get(rand.nextInt(allTracks.size())).checksum);
+        if (allTracks.size() > 0) {
+            Random rand = new Random();
+            for (int i = 0; i < 10; i++) {
+                PlaylistManager.append(this, allTracks.get(rand.nextInt(allTracks.size())).checksum);
+            }
+            Log.d(TAG, "Playlist init'd");
         }
-        Log.d(TAG, "Playlist init'd");
 
         bindService(new Intent(this, MediaService.class), mediaServiceConnection, BIND_AUTO_CREATE);
     }
