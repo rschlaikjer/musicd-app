@@ -4,9 +4,9 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
-import android.util.Log;
 
 import com.schlaikjer.msgs.TrackOuterClass;
+import com.schlaikjer.music.model.Album;
 import com.schlaikjer.music.model.Track;
 
 import java.util.ArrayList;
@@ -82,7 +82,7 @@ public class TrackDatabase {
         contentValues.put(TrackDatabaseHelper.TracksTable.COLUMN_TAG_TRACK, record.getTagTrack());
         contentValues.put(TrackDatabaseHelper.TracksTable.COLUMN_TAG_GENRE, record.getTagGenre());
 
-        database.insert(TrackDatabaseHelper.TracksTable.TABLE_NAME, null, contentValues);
+        database.insertWithOnConflict(TrackDatabaseHelper.TracksTable.TABLE_NAME, null, contentValues, SQLiteDatabase.CONFLICT_REPLACE);
     }
 
     public List<Track> getAllTracks() {
@@ -115,4 +115,163 @@ public class TrackDatabase {
         }
         return transactionList;
     }
+
+    public void addPbImages(Iterable<TrackOuterClass.Image> records) {
+        SQLiteDatabase database = helper.getWritableDatabase();
+        for (TrackOuterClass.Image record : records) {
+            addImage(database, record);
+        }
+    }
+
+    private void addImage(SQLiteDatabase database, TrackOuterClass.Image record) {
+        ContentValues contentValues = new ContentValues();
+
+        contentValues.put(TrackDatabaseHelper.ImagesTable.COLUMN_RAW_PATH, record.getRawPath());
+        contentValues.put(TrackDatabaseHelper.ImagesTable.COLUMN_PARENT_PATH, record.getParentPath());
+        contentValues.put(TrackDatabaseHelper.ImagesTable.COLUMN_CHECKSUM, record.getChecksum().toByteArray());
+
+        database.insertWithOnConflict(TrackDatabaseHelper.ImagesTable.TABLE_NAME, null, contentValues, SQLiteDatabase.CONFLICT_REPLACE);
+    }
+
+    public List<byte[]> getImageChecksumsForParentPath(String path) {
+        SQLiteDatabase database = helper.getReadableDatabase();
+        Cursor c = database.query(
+                TrackDatabaseHelper.ImagesTable.TABLE_NAME,
+                new String[]{TrackDatabaseHelper.ImagesTable.COLUMN_CHECKSUM}, TrackDatabaseHelper.ImagesTable.COLUMN_PARENT_PATH + " = $1", // Select
+                new String[]{path}, // No select args
+                null, // Group
+                null, // Having
+                null // Order
+        );
+
+        List<byte[]> checksums = new ArrayList<>();
+        c.moveToFirst();
+        while (!c.isAfterLast()) {
+            checksums.add(c.getBlob(c.getColumnIndex(TrackDatabaseHelper.ImagesTable.COLUMN_CHECKSUM)));
+            c.moveToNext();
+        }
+
+        return checksums;
+    }
+
+    public List<Album> getAlbums() {
+        // Select distinct album names
+        SQLiteDatabase database = helper.getReadableDatabase();
+        Cursor c = database.query(
+                true, // distinct
+                TrackDatabaseHelper.TracksTable.TABLE_NAME,
+                new String[]{
+                        TrackDatabaseHelper.TracksTable.COLUMN_PARENT_PATH,
+                        TrackDatabaseHelper.TracksTable.COLUMN_TAG_ALBUM,
+                        TrackDatabaseHelper.TracksTable.COLUMN_TAG_ARTIST,
+                        TrackDatabaseHelper.TracksTable.COLUMN_TAG_YEAR,
+                },
+                null, // No select
+                null, // No select args
+                TrackDatabaseHelper.TracksTable.COLUMN_TAG_ALBUM + ", " +
+                        TrackDatabaseHelper.TracksTable.COLUMN_TAG_ARTIST, // Group
+                null, // Having
+                null, // Order
+                null // Limit
+        );
+
+        // Pull intom models
+        List<Album> albums = new ArrayList<>();
+        c.moveToFirst();
+        while (!c.isAfterLast()) {
+            Album album = new Album();
+            album.parent_path = c.getString(c.getColumnIndex(TrackDatabaseHelper.TracksTable.COLUMN_PARENT_PATH));
+            album.artist = c.getString(c.getColumnIndex(TrackDatabaseHelper.TracksTable.COLUMN_TAG_ARTIST));
+            album.name = c.getString(c.getColumnIndex(TrackDatabaseHelper.TracksTable.COLUMN_TAG_ALBUM));
+            album.artist = c.getString(c.getColumnIndex(TrackDatabaseHelper.TracksTable.COLUMN_TAG_ARTIST));
+
+            // For each album, fetch the set of content addresses for images that could be used as covers
+            album.coverImageChecksums = getImageChecksumsForParentPath(album.parent_path);
+
+            albums.add(album);
+            c.moveToNext();
+        }
+
+        return albums;
+    }
+
+    public List<Album> getDirectoryAlbums(String basedir) {
+        // Select distinct album names
+        SQLiteDatabase database = helper.getReadableDatabase();
+        Cursor c = database.query(
+                true, // distinct
+                TrackDatabaseHelper.TracksTable.TABLE_NAME,
+                new String[]{
+                        TrackDatabaseHelper.TracksTable.COLUMN_PARENT_PATH,
+                        TrackDatabaseHelper.TracksTable.COLUMN_TAG_ALBUM,
+                        TrackDatabaseHelper.TracksTable.COLUMN_TAG_ARTIST,
+                        TrackDatabaseHelper.TracksTable.COLUMN_TAG_YEAR,
+                },
+                null, // No select
+                null, // No select args
+                TrackDatabaseHelper.TracksTable.COLUMN_PARENT_PATH + ", " +
+                        TrackDatabaseHelper.TracksTable.COLUMN_TAG_ARTIST, // Group
+                null, // Having
+                null, // Order
+                null // Limit
+        );
+
+        List<Album> albums = new ArrayList<>();
+        c.moveToFirst();
+        while (!c.isAfterLast()) {
+            Album album = new Album();
+            album.parent_path = c.getString(c.getColumnIndex(TrackDatabaseHelper.TracksTable.COLUMN_PARENT_PATH));
+            album.artist = c.getString(c.getColumnIndex(TrackDatabaseHelper.TracksTable.COLUMN_TAG_ARTIST));
+            album.name = c.getString(c.getColumnIndex(TrackDatabaseHelper.TracksTable.COLUMN_TAG_ALBUM));
+            album.artist = c.getString(c.getColumnIndex(TrackDatabaseHelper.TracksTable.COLUMN_TAG_ARTIST));
+
+            // For each album, fetch the set of content addresses for images that could be used as covers
+            album.coverImageChecksums = getImageChecksumsForParentPath(album.parent_path);
+
+            albums.add(album);
+            c.moveToNext();
+        }
+
+        return albums;
+    }
+
+    public List<byte[]> getPlaylist() {
+        // Select distinct album names
+        SQLiteDatabase database = helper.getReadableDatabase();
+        Cursor c = database.query(
+                true, // distinct
+                TrackDatabaseHelper.PlaylistTable.TABLE_NAME,
+                TrackDatabaseHelper.PlaylistTable.projection(),
+                null, // No select
+                null, // No select args
+                null, // Group
+                null, // Having
+                TrackDatabaseHelper.PlaylistTable.COLUMN_INDEX + " ASC", // Order
+                null // Limit
+        );
+
+        List<byte[]> tracks = new ArrayList<>();
+        c.moveToFirst();
+        while (!c.isAfterLast()) {
+            tracks.add(c.getBlob(c.getColumnIndex(TrackDatabaseHelper.TracksTable.COLUMN_CHECKSUM)));
+            c.moveToNext();
+        }
+
+        return tracks;
+    }
+
+    public void setPlaylist(List<byte[]> playlist) {
+        SQLiteDatabase database = helper.getWritableDatabase();
+        database.beginTransaction();
+        database.delete(TrackDatabaseHelper.PlaylistTable.TABLE_NAME, null, null);
+        for (int i = 0; i < playlist.size(); i++) {
+            ContentValues contentValues = new ContentValues();
+            contentValues.put(TrackDatabaseHelper.PlaylistTable.COLUMN_INDEX, i);
+            contentValues.put(TrackDatabaseHelper.PlaylistTable.COLUMN_CHECKSUM, playlist.get(i));
+            database.insert(TrackDatabaseHelper.PlaylistTable.TABLE_NAME, null, contentValues);
+        }
+        database.setTransactionSuccessful();
+        database.endTransaction();
+    }
+
 }

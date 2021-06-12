@@ -1,10 +1,8 @@
 package com.schlaikjer.music;
 
 import android.content.ComponentName;
-import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
-import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.util.Log;
@@ -21,18 +19,13 @@ import androidx.navigation.ui.NavigationUI;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.navigation.NavigationView;
-import com.google.android.material.snackbar.Snackbar;
-import com.google.protobuf.InvalidProtocolBufferException;
-import com.schlaikjer.msgs.TrackOuterClass;
 import com.schlaikjer.music.db.TrackDatabase;
-import com.schlaikjer.music.model.NetworkOpcode;
-import com.schlaikjer.music.model.Packet;
 import com.schlaikjer.music.model.Track;
-import com.schlaikjer.music.service.NetworkService;
-import com.schlaikjer.music.utility.StorageManager;
+import com.schlaikjer.music.service.MediaService;
+import com.schlaikjer.music.utility.PlaylistManager;
 
-import java.io.IOException;
 import java.util.List;
+import java.util.Random;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -40,73 +33,23 @@ public class MainActivity extends AppCompatActivity {
 
     private AppBarConfiguration mAppBarConfiguration;
 
-    NetworkService _network_service;
+    MediaService.MediaServiceBinder serviceBinder;
 
-    ServiceConnection _network_service_connection = new ServiceConnection() {
+    ServiceConnection mediaServiceConnection = new ServiceConnection() {
+
+
         @Override
         public void onServiceConnected(ComponentName name, IBinder binder) {
-            _network_service = ((NetworkService.NetworkServiceBinder) binder).getService();
-            Log.d(TAG, "Requesting DB update");
-
-            if (false) {
-                _network_service.reloadDatabase(new NetworkService.NetworkTxnCallback() {
-                    @Override
-                    public void onTxnComplete(Packet packet) {
-                        Log.d(TAG, "DB Update Req Complete");
-                        if (packet.opcode != NetworkOpcode.FETCH_DB) {
-                            Log.e(TAG, "Unexpected return opcode for fetch db call");
-                            return;
-                        }
-                        try {
-                            TrackOuterClass.MusicDatabase db = TrackOuterClass.MusicDatabase.parseFrom(packet.data);
-                            List<TrackOuterClass.Track> trackList = db.getTracksList();
-                            TrackDatabase.getInstance(MainActivity.this).addPbTracks(trackList);
-                            for (TrackOuterClass.Track track : trackList) {
-                                Log.d(TAG, track.getRawPath());
-                            }
-                        } catch (InvalidProtocolBufferException e) {
-                            e.printStackTrace();
-                        }
-                    }
-
-                    @Override
-                    public void onAbort() {
-                        Log.d(TAG, "DB Update Req Aborted");
-                    }
-                });
-            }
-
-            if (false) {
-                Track track = TrackDatabase.getInstance(MainActivity.this).getAllTracks().get(0);
-                _network_service.fetchTrack(track.checksum, new NetworkService.NetworkTxnCallback() {
-                    @Override
-                    public void onTxnComplete(Packet p) {
-                        Log.d(TAG, "Fetched track " + track.checksum);
-                        if (p.opcode != NetworkOpcode.FETCH_TRACK) {
-                            Log.e(TAG, "Unexpected return opcode for fetch track call");
-                            return;
-                        }
-
-                        // Save the track data
-                        StorageManager.saveContentFile(MainActivity.this, track.checksum, p.data);
-                    }
-
-                    @Override
-                    public void onAbort() {
-                        Log.d(TAG, "Fetch track aborted");
-                    }
-                });
-            }
-
+            serviceBinder = (MediaService.MediaServiceBinder) binder;
+            Log.d(TAG, "Bound media service");
         }
 
         @Override
         public void onServiceDisconnected(ComponentName name) {
-            _network_service = null;
+            serviceBinder = null;
+            Log.d(TAG, "Media service disconnected");
         }
     };
-
-    MediaPlayer player;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -114,39 +57,43 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
+
         FloatingActionButton fab = findViewById(R.id.fab);
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onClick(View view) {
-                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                        .setAction("Action", null).show();
+            public void onClick(View v) {
+                if (serviceBinder == null) {
+                    Log.w(TAG, "Service binder null - cannot play");
+                    return;
+                }
+
+                serviceBinder.service.play();
             }
         });
+
         DrawerLayout drawer = findViewById(R.id.drawer_layout);
+
         NavigationView navigationView = findViewById(R.id.nav_view);
+
         // Passing each menu ID as a set of Ids because each
         // menu should be considered as top level destinations.
         mAppBarConfiguration = new AppBarConfiguration.Builder(
                 R.id.nav_home, R.id.nav_gallery, R.id.nav_slideshow)
                 .setDrawerLayout(drawer)
                 .build();
+
         NavController navController = Navigation.findNavController(this, R.id.nav_host_fragment);
         NavigationUI.setupActionBarWithNavController(this, navController, mAppBarConfiguration);
         NavigationUI.setupWithNavController(navigationView, navController);
 
-
-        bindService(new Intent(this, NetworkService.class), _network_service_connection, Context.BIND_AUTO_CREATE);
-
-        Track track = TrackDatabase.getInstance(MainActivity.this).getAllTracks().get(0);
-        byte[] checksum = track.checksum;
-        try {
-            player = new MediaPlayer();
-            player.setDataSource(StorageManager.getContentFilePath(this, checksum));
-            player.prepare();
-            player.start();
-        } catch (IOException e) {
-            e.printStackTrace();
+        List<Track> allTracks = TrackDatabase.getInstance(this).getAllTracks();
+        Random rand = new Random();
+        for (int i = 0; i < 10; i++) {
+            PlaylistManager.append(this, allTracks.get(rand.nextInt(allTracks.size())).checksum);
         }
+        Log.d(TAG, "Playlist init'd");
+
+        bindService(new Intent(this, MediaService.class), mediaServiceConnection, BIND_AUTO_CREATE);
     }
 
     @Override

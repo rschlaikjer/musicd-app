@@ -36,12 +36,20 @@ public class StorageManager {
     }
 
     public static boolean hasContentFile(Context context, byte[] checksum) {
+        if (checksum == null) {
+            return false;
+        }
+
         String filename = bytesToHex(checksum);
         File file = new File(context.getFilesDir(), filename);
         return file.exists();
     }
 
     public static String getContentFilePath(Context context, byte[] checksum) {
+        if (checksum == null) {
+            throw new RuntimeException();
+        }
+
         String filename = bytesToHex(checksum);
         File file = new File(context.getFilesDir(), filename);
         return file.getAbsolutePath();

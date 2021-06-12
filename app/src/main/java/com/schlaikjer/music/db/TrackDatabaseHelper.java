@@ -11,7 +11,7 @@ import com.schlaikjer.music.exception.MissingMigrationException;
 public class TrackDatabaseHelper extends SQLiteOpenHelper {
 
     private static final String DB_NAME = "tracks";
-    private static int DB_VERSION = 1;
+    private static int DB_VERSION = 3;
 
     private static SparseArray<Migration> migrations = new SparseArray<>();
 
@@ -37,6 +37,29 @@ public class TrackDatabaseHelper extends SQLiteOpenHelper {
                 // Add indexes on artist / album since we'll be grouping on these a lot
                 database.execSQL("CREATE INDEX " + TracksTable.COLUMN_TAG_ARTIST + "_index ON " + TracksTable.TABLE_NAME + "(" + TracksTable.COLUMN_TAG_ARTIST + ")");
                 database.execSQL("CREATE INDEX " + TracksTable.COLUMN_TAG_ALBUM + "_index ON " + TracksTable.TABLE_NAME + "(" + TracksTable.COLUMN_TAG_ALBUM + ")");
+            }
+        });
+
+        migrations.put(2, new Migration() {
+            @Override
+            public void apply(SQLiteDatabase database) {
+                // Create the main images table
+                database.execSQL("CREATE TABLE " + ImagesTable.TABLE_NAME + " (" +
+                        ImagesTable.COLUMN_RAW_PATH + " TEXT," +
+                        ImagesTable.COLUMN_PARENT_PATH + " TEXT," +
+                        ImagesTable.COLUMN_CHECKSUM + " BLOB PRIMARY KEY," +
+                        "CONSTRAINT " + ImagesTable.COLUMN_CHECKSUM + "_unique UNIQUE (" + ImagesTable.COLUMN_CHECKSUM + ") ON CONFLICT REPLACE " +
+                        " ) ");
+            }
+        });
+
+        migrations.put(3, new Migration() {
+            @Override
+            public void apply(SQLiteDatabase database) {
+                database.execSQL("CREATE TABLE " + PlaylistTable.TABLE_NAME + " (" +
+                        PlaylistTable.COLUMN_INDEX + " INT," +
+                        PlaylistTable.COLUMN_CHECKSUM + " BLOB" +
+                        " ) ");
             }
         });
     }
@@ -85,5 +108,38 @@ public class TrackDatabaseHelper extends SQLiteOpenHelper {
         }
 
     }
+
+
+    public static class ImagesTable implements BaseColumns {
+
+        public static final String TABLE_NAME = "image";
+
+        public static final String COLUMN_RAW_PATH = "raw_path";
+        public static final String COLUMN_PARENT_PATH = "parent_path";
+        public static final String COLUMN_CHECKSUM = "checksum";
+
+        public static String[] projection() {
+            return new String[]{
+                    COLUMN_RAW_PATH, COLUMN_PARENT_PATH, COLUMN_CHECKSUM,
+            };
+        }
+
+    }
+
+    public static class PlaylistTable implements BaseColumns {
+
+        public static final String TABLE_NAME = "playlist";
+
+        public static final String COLUMN_INDEX = "idx";
+        public static final String COLUMN_CHECKSUM = "checksum";
+
+        public static String[] projection() {
+            return new String[]{
+                    COLUMN_INDEX, COLUMN_CHECKSUM,
+            };
+        }
+
+    }
+
 
 }
