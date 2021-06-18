@@ -22,6 +22,7 @@ import com.google.android.material.navigation.NavigationView;
 import com.schlaikjer.music.db.TrackDatabase;
 import com.schlaikjer.music.model.Track;
 import com.schlaikjer.music.service.MediaService;
+import com.schlaikjer.music.utility.NetworkManager;
 import com.schlaikjer.music.utility.PlaylistManager;
 
 import java.util.List;
@@ -67,6 +68,18 @@ public class MainActivity extends AppCompatActivity {
                     return;
                 }
 
+                NetworkManager.rescanDatabase(new NetworkManager.DatabaseRescanCallback() {
+                    @Override
+                    public void onSuccess() {
+                        Log.d(TAG, "Rescanning DB");
+                    }
+
+                    @Override
+                    public void onAbort() {
+                        Log.w(TAG, "Failed to request DB scan");
+                    }
+                });
+
                 serviceBinder.service.play();
             }
         });
@@ -96,6 +109,12 @@ public class MainActivity extends AppCompatActivity {
         }
 
         bindService(new Intent(this, MediaService.class), mediaServiceConnection, BIND_AUTO_CREATE);
+    }
+
+    @Override
+    protected void onDestroy() {
+        unbindService(mediaServiceConnection);
+        super.onDestroy();
     }
 
     @Override

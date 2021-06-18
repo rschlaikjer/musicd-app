@@ -3,11 +3,11 @@ package com.schlaikjer.music.db;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
+import android.database.sqlite.SQLiteCursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.util.Log;
 
 import com.schlaikjer.msgs.TrackOuterClass;
-import com.schlaikjer.music.MainActivity;
 import com.schlaikjer.music.model.Album;
 import com.schlaikjer.music.model.Track;
 
@@ -111,6 +111,34 @@ public class TrackDatabase {
         database.insertWithOnConflict(TrackDatabaseHelper.TracksTable.TABLE_NAME, null, contentValues, SQLiteDatabase.CONFLICT_REPLACE);
     }
 
+    public Track getTrack(byte[] checksum) {
+        SQLiteDatabase database = helper.getReadableDatabase();
+        Cursor c = database.rawQueryWithFactory((db, masterQuery, editTable, query) -> {
+            query.bindBlob(1, checksum);
+            return new SQLiteCursor(masterQuery, editTable, query);
+        }, "SELECT * FROM " + TrackDatabaseHelper.TracksTable.TABLE_NAME + " WHERE " + TrackDatabaseHelper.TracksTable.COLUMN_CHECKSUM + " = $1", null, TrackDatabaseHelper.TracksTable.TABLE_NAME);
+
+        c.moveToFirst();
+        while (!c.isAfterLast()) {
+            Track track = new Track();
+            track.raw_path = c.getString(c.getColumnIndex(TrackDatabaseHelper.TracksTable.COLUMN_RAW_PATH));
+            track.parent_path = c.getString(c.getColumnIndex(TrackDatabaseHelper.TracksTable.COLUMN_PARENT_PATH));
+            track.checksum = c.getBlob(c.getColumnIndex(TrackDatabaseHelper.TracksTable.COLUMN_CHECKSUM));
+            track.tag_title = c.getString(c.getColumnIndex(TrackDatabaseHelper.TracksTable.COLUMN_TAG_TITLE));
+            track.tag_artist = c.getString(c.getColumnIndex(TrackDatabaseHelper.TracksTable.COLUMN_TAG_ARTIST));
+            track.tag_album = c.getString(c.getColumnIndex(TrackDatabaseHelper.TracksTable.COLUMN_TAG_ALBUM));
+            track.tag_year = c.getInt(c.getColumnIndex(TrackDatabaseHelper.TracksTable.COLUMN_TAG_YEAR));
+            track.tag_comment = c.getString(c.getColumnIndex(TrackDatabaseHelper.TracksTable.COLUMN_TAG_COMMENT));
+            track.tag_track = c.getInt(c.getColumnIndex(TrackDatabaseHelper.TracksTable.COLUMN_TAG_TRACK));
+            track.tag_genre = c.getString(c.getColumnIndex(TrackDatabaseHelper.TracksTable.COLUMN_TAG_GENRE));
+            c.close();
+            return track;
+        }
+
+        c.close();
+        return null;
+    }
+
     public List<Track> getAllTracks() {
         SQLiteDatabase database = helper.getReadableDatabase();
         Cursor c = database.query(
@@ -139,6 +167,8 @@ public class TrackDatabase {
             transactionList.add(track);
             c.moveToNext();
         }
+        c.close();
+
         return transactionList;
     }
 
@@ -176,6 +206,7 @@ public class TrackDatabase {
             checksums.add(c.getBlob(c.getColumnIndex(TrackDatabaseHelper.ImagesTable.COLUMN_CHECKSUM)));
             c.moveToNext();
         }
+        c.close();
 
         return checksums;
     }
@@ -217,6 +248,7 @@ public class TrackDatabase {
             albums.add(album);
             c.moveToNext();
         }
+        c.close();
 
         return albums;
     }
@@ -233,8 +265,8 @@ public class TrackDatabase {
                         TrackDatabaseHelper.TracksTable.COLUMN_TAG_ARTIST,
                         TrackDatabaseHelper.TracksTable.COLUMN_TAG_YEAR,
                 },
-                null, // No select
-                null, // No select args
+                TrackDatabaseHelper.TracksTable.COLUMN_PARENT_PATH + " LIKE $1", // No select
+                new String[]{basedir + "%"}, // No select args
                 TrackDatabaseHelper.TracksTable.COLUMN_PARENT_PATH + ", " +
                         TrackDatabaseHelper.TracksTable.COLUMN_TAG_ARTIST, // Group
                 null, // Having
@@ -257,6 +289,7 @@ public class TrackDatabase {
             albums.add(album);
             c.moveToNext();
         }
+        c.close();
 
         return albums;
     }
@@ -282,6 +315,7 @@ public class TrackDatabase {
             tracks.add(c.getBlob(c.getColumnIndex(TrackDatabaseHelper.TracksTable.COLUMN_CHECKSUM)));
             c.moveToNext();
         }
+        c.close();
 
         return tracks;
     }

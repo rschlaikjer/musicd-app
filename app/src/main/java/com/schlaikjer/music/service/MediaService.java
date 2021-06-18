@@ -11,6 +11,8 @@ import android.util.Log;
 import androidx.annotation.Nullable;
 
 import com.schlaikjer.music.MainActivity;
+import com.schlaikjer.music.db.TrackDatabase;
+import com.schlaikjer.music.model.Track;
 import com.schlaikjer.music.utility.NetworkManager;
 import com.schlaikjer.music.utility.PlaylistManager;
 import com.schlaikjer.music.utility.StorageManager;
@@ -76,6 +78,10 @@ public class MediaService extends Service implements MediaPlayer.OnErrorListener
         if (StorageManager.hasContentFile(this, trackChecksum)) {
             // We do - get the content URI and start up the mediaplayer
             String trackPath = StorageManager.getContentFilePath(this, trackChecksum);
+            Track track = TrackDatabase.getInstance(this).getTrack(trackChecksum);
+            if (track != null) {
+                Log.d(TAG, "Playing track " + track.raw_path);
+            }
             player.reset();
             try {
                 player.setDataSource(trackPath);

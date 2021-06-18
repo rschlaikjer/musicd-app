@@ -10,4 +10,17 @@
     <string name="menu_home">Home</string>
     <string name="menu_gallery">Gallery</string>
     <string name="menu_slideshow">Slideshow</string>
+
+    <!-- Now playing view text view values -->
+    <string name="song_track_no">Track No.:</string>
+    <string name="song_playlist_no">Playlist No.:</string>
+    <string name="song_bitrate">Bitrate:</string>
+    <string name="song_audio_properties">Audio properties:</string>
+    <string name="song_uri">Track URI:</string>
+    <string name="song_title">Title:</string>
+    <string name="song_album">Album:</string>
+    <string name="song_artist">Artist:</string>
+    <string name="song_artist_sort">Artist (sort):</string>
+    <string name="song_album_artist">Album artist:</string>
+    <string name="song_album_artist_sort">Album artist (sort):</string>
 </resources>

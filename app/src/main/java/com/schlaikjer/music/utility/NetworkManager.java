@@ -22,8 +22,8 @@ public class NetworkManager {
 
     private static final String TAG = NetworkManager.class.getSimpleName();
 
-    // static final String SERVER_HOST = "rhye.org";
-    static final String SERVER_HOST = "192.168.0.41";
+    static final String SERVER_HOST = "rhye.org";
+    // static final String SERVER_HOST = "192.168.0.41";
     static final int SERVER_PORT = 5959;
 
     // Content database fetch callback

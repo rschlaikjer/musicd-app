@@ -14,6 +14,8 @@ import android.widget.TextView;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.schlaikjer.music.R;
+import com.schlaikjer.music.listener.AlbumSelectedListener;
+import com.schlaikjer.music.listener.TrackSelectedListener;
 import com.schlaikjer.music.model.Album;
 import com.schlaikjer.music.utility.NetworkManager;
 import com.schlaikjer.music.utility.StorageManager;
@@ -32,6 +34,9 @@ public class AlbumRecyclerAdapter extends RecyclerView.Adapter<AlbumRecyclerAdap
     private List<Album> _albums;
     private String[] _albumSections;
     private Integer[] _albumSectionOffsets;
+
+    AlbumSelectedListener albumSelectedListener;
+    TrackSelectedListener trackSelectedListener;
 
     @Override
     public Object[] getSections() {
@@ -71,9 +76,15 @@ public class AlbumRecyclerAdapter extends RecyclerView.Adapter<AlbumRecyclerAdap
     }
 
 
-    public AlbumRecyclerAdapter(Context context, List<Album> albums) {
-        _appContext = context.getApplicationContext();
-        _albums = albums;
+    public AlbumRecyclerAdapter(Context context, AlbumSelectedListener albumSelectedListener, TrackSelectedListener trackSelectedListener) {
+        this._appContext = context.getApplicationContext();
+        this.albumSelectedListener = albumSelectedListener;
+        this.trackSelectedListener = trackSelectedListener;
+        setAlbumList(new ArrayList<>());
+    }
+
+    public void setAlbumList(List<Album> albums) {
+        this._albums = albums;
         Collections.sort(_albums, (o1, o2) -> o1.name.compareTo(o2.name));
 
         // Regenerate album sections
@@ -103,6 +114,8 @@ public class AlbumRecyclerAdapter extends RecyclerView.Adapter<AlbumRecyclerAdap
 
         _albumSections = sections.toArray(new String[0]);
         _albumSectionOffsets = sectionOffsets.toArray(new Integer[0]);
+
+        notifyDataSetChanged();
     }
 
     @Override
@@ -118,8 +131,13 @@ public class AlbumRecyclerAdapter extends RecyclerView.Adapter<AlbumRecyclerAdap
         final Album album = _albums.get(position);
         viewHolder.album = album;
 
+        View.OnClickListener listener = v -> albumSelectedListener.onAlbumSelected(album);
+        viewHolder.imageView.setOnClickListener(listener);
+        viewHolder.albumText.setOnClickListener(listener);
+        viewHolder.artistText.setOnClickListener(listener);
+
         // Try and load an image
-        viewHolder.imageView.setImageDrawable(_appContext.getResources().getDrawable(R.drawable.ic_launcher_foreground));
+        viewHolder.imageView.setImageDrawable(_appContext.getResources().getDrawable(R.drawable.ic_baseline_library_music_48));
 
         ThreadManager.runOnBgThread(() -> {
             // Attempt to find an already loaded image for this album
