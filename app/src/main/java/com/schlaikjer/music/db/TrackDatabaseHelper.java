@@ -11,7 +11,7 @@ import com.schlaikjer.music.exception.MissingMigrationException;
 public class TrackDatabaseHelper extends SQLiteOpenHelper {
 
     private static final String DB_NAME = "tracks";
-    private static int DB_VERSION = 3;
+    private static int DB_VERSION = 4;
 
     private static SparseArray<Migration> migrations = new SparseArray<>();
 
@@ -59,6 +59,20 @@ public class TrackDatabaseHelper extends SQLiteOpenHelper {
                 database.execSQL("CREATE TABLE " + PlaylistTable.TABLE_NAME + " (" +
                         PlaylistTable.COLUMN_INDEX + " INT," +
                         PlaylistTable.COLUMN_CHECKSUM + " BLOB" +
+                        " ) ");
+            }
+        });
+
+        migrations.put(4, new Migration() {
+            @Override
+            public void apply(SQLiteDatabase database) {
+                database.execSQL("CREATE TABLE " + CacheTable.TABLE_NAME + " (" +
+                        CacheTable.COLUMN_CHECKSUM + " BLOB, " +
+                        CacheTable.COLUMN_PATH + " TEXT, " +
+                        CacheTable.COLUMN_SIZE_BYTES + " INTEGER, " +
+                        CacheTable.COLUMN_ACCESS_COUNT + " INTEGER, " +
+                        CacheTable.COLUMN_LAST_ACCESS_TIME + " INTEGER, " +
+                        "CONSTRAINT " + CacheTable.COLUMN_CHECKSUM + "_unique UNIQUE (" + CacheTable.COLUMN_CHECKSUM + ") ON CONFLICT IGNORE " +
                         " ) ");
             }
         });
@@ -136,6 +150,24 @@ public class TrackDatabaseHelper extends SQLiteOpenHelper {
         public static String[] projection() {
             return new String[]{
                     COLUMN_INDEX, COLUMN_CHECKSUM,
+            };
+        }
+
+    }
+
+    public static class CacheTable implements BaseColumns {
+
+        public static final String TABLE_NAME = "cache";
+
+        public static final String COLUMN_CHECKSUM = "checksum";
+        public static final String COLUMN_PATH = "path";
+        public static final String COLUMN_SIZE_BYTES = "size_bytes";
+        public static final String COLUMN_ACCESS_COUNT = "access_count";
+        public static final String COLUMN_LAST_ACCESS_TIME = "last_access_time";
+
+        public static String[] projection() {
+            return new String[]{
+                    COLUMN_CHECKSUM, COLUMN_PATH, COLUMN_SIZE_BYTES, COLUMN_ACCESS_COUNT, COLUMN_LAST_ACCESS_TIME
             };
         }
 

@@ -26,6 +26,9 @@ public class NetworkManager {
     // static final String SERVER_HOST = "192.168.0.41";
     static final int SERVER_PORT = 5959;
 
+    // How long to keep the socket connected with no active transactions
+    static final long SOCKET_KEEPALIVE_MS = 15_000;
+
     // Content database fetch callback
     public interface DatabaseFetchCallback {
         void onDatabaseFetched(TrackOuterClass.MusicDatabase db);
@@ -61,6 +64,8 @@ public class NetworkManager {
     private static Thread _network_thread;
     // Socket handle
     private static Socket _server_socket = null;
+    // Timeout counter for disconnecting the socket
+    private static long _socket_last_activity = 0;
     // Internal callback map
     private static final Map<Integer, TxnCalllback> _callbacks = new HashMap<>();
     private static final Set<byte[]> _active_content_requests = new HashSet<>();
@@ -117,23 +122,24 @@ public class NetworkManager {
     private static void networkLoop() {
         Log.d(TAG, "Starting network loop");
         while (true) {
-
-            // Try and keep socket up
-            if (!ensureConnected()) {
-                Log.d(TAG, "Socket not connected, sleeping");
-                try {
-                    Thread.sleep(1000);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
+            // If there are no outstanding networking operations, check to see if the connection has been idle long enough to be worth closing
+            if (_server_socket != null && _callbacks.size() == 0 && _packet_tx_queue.size() == 0) {
+                if (System.currentTimeMillis() > _socket_last_activity + SOCKET_KEEPALIVE_MS) {
+                    // Socket is in timeout, close it down
+                    Log.d(TAG, "Connection timeout reached, closing socket");
+                    reset_connection();
                 }
-                continue;
             }
 
             // If socket is live, check for incoming data
             boolean did_rx_new_data = false;
             try {
                 byte[] buffer = new byte[1024];
-                while (_server_socket.getInputStream().available() > 0) {
+                while (_server_socket != null && _server_socket.getInputStream().available() > 0) {
+                    // Update activity counter
+                    _socket_last_activity = System.currentTimeMillis();
+
+                    // Ingest data from socket
                     int read =
                             _server_socket.getInputStream().read(buffer, 0, buffer.length);
                     _incoming_data_slab.write(buffer, 0, read);
@@ -147,13 +153,15 @@ public class NetworkManager {
 
             try {
                 // Attempt to deserialize packets out of the buffered incoming data
-                while (did_rx_new_data && _incoming_data_slab.size() > 12) {
+                while (did_rx_new_data && _incoming_data_slab.size() >= 12) {
+
                     // If there are at least enough bytes for a header in the rx buffer, test to see if we can resolve an incoming packet
                     Packet p = Packet.deserialize(_incoming_data_slab);
                     if (p != null) {
                         synchronized (_packet_tx_queue) {
                             TxnCalllback callback = _callbacks.get(p.nonce);
                             _callbacks.remove(p.nonce);
+                            Log.d(TAG, "Resolved callback with nonce " + p.nonce);
                             if (callback != null) {
                                 callback.onSuccess(p);
                             }
@@ -172,6 +180,20 @@ public class NetworkManager {
             try {
                 synchronized (_packet_tx_queue) {
                     while (!_packet_tx_queue.isEmpty()) {
+                        // Connect socket if not already connected
+                        if (!ensureConnected()) {
+                            try {
+                                Thread.sleep(1000);
+                            } catch (InterruptedException e) {
+                                e.printStackTrace();
+                            }
+                            break;
+                        }
+
+                        // Update activity counter
+                        _socket_last_activity = System.currentTimeMillis();
+
+                        // Serialize the head packet
                         Packet p = _packet_tx_queue.pop();
                         Log.d(TAG, "Sending packet with nonce " + p.nonce);
                         p.serialize(_server_socket.getOutputStream());
@@ -184,7 +206,7 @@ public class NetworkManager {
                 continue;
             }
 
-            // Hideous
+            // Hideous. Please, just let me select()
             try {
                 Thread.sleep(1);
             } catch (InterruptedException e) {
@@ -199,6 +221,8 @@ public class NetworkManager {
             try {
                 _server_socket = new Socket(SERVER_HOST, SERVER_PORT);
                 _server_socket.setKeepAlive(true);
+                _socket_last_activity = System.currentTimeMillis();
+                Log.d(TAG, "Created new server socket");
             } catch (IOException e) {
                 e.printStackTrace();
                 return false;

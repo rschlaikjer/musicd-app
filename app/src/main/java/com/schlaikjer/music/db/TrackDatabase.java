@@ -9,6 +9,7 @@ import android.util.Log;
 
 import com.schlaikjer.msgs.TrackOuterClass;
 import com.schlaikjer.music.model.Album;
+import com.schlaikjer.music.model.CacheEntry;
 import com.schlaikjer.music.model.Track;
 
 import java.util.ArrayList;
@@ -333,5 +334,54 @@ public class TrackDatabase {
         database.setTransactionSuccessful();
         database.endTransaction();
     }
+
+    public void addCacheEntry(CacheEntry entry) {
+        SQLiteDatabase database = helper.getWritableDatabase();
+        ContentValues contentValues = new ContentValues();
+        contentValues.put(TrackDatabaseHelper.CacheTable.COLUMN_CHECKSUM, entry.checksum);
+        contentValues.put(TrackDatabaseHelper.CacheTable.COLUMN_PATH, entry.path);
+        contentValues.put(TrackDatabaseHelper.CacheTable.COLUMN_SIZE_BYTES, entry.sizeBytes);
+        contentValues.put(TrackDatabaseHelper.CacheTable.COLUMN_ACCESS_COUNT, entry.accessCount);
+        contentValues.put(TrackDatabaseHelper.CacheTable.COLUMN_LAST_ACCESS_TIME, entry.lastAccessTime);
+        database.insert(TrackDatabaseHelper.CacheTable.TABLE_NAME, null, contentValues);
+    }
+
+    public void accessCacheEntry(byte[] hash) {
+        SQLiteDatabase database = helper.getWritableDatabase();
+        database.execSQL("UPDATE " + TrackDatabaseHelper.CacheTable.TABLE_NAME + " SET " + TrackDatabaseHelper.CacheTable.COLUMN_ACCESS_COUNT + " = " + TrackDatabaseHelper.CacheTable.COLUMN_ACCESS_COUNT + " + 1, " + TrackDatabaseHelper.CacheTable.COLUMN_LAST_ACCESS_TIME + " = $1", new Object[]{System.currentTimeMillis()});
+    }
+
+    public List<CacheEntry> getCacheEntries() {
+        // Select all cache entries, order by least recently accessed
+        SQLiteDatabase database = helper.getReadableDatabase();
+        Cursor c = database.query(
+                false, // distinct
+                TrackDatabaseHelper.CacheTable.TABLE_NAME,
+                TrackDatabaseHelper.CacheTable.projection(),
+                null, // No select
+                null, // No select args
+                null, // Group
+                null, // Having
+                TrackDatabaseHelper.CacheTable.COLUMN_LAST_ACCESS_TIME + " ASC", // Order
+                null // Limit
+        );
+
+        List<CacheEntry> entries = new ArrayList<>();
+        c.moveToFirst();
+        while (!c.isAfterLast()) {
+            CacheEntry entry = new CacheEntry();
+            entry.checksum = c.getBlob(c.getColumnIndex(TrackDatabaseHelper.CacheTable.COLUMN_CHECKSUM));
+            entry.path = c.getString(c.getColumnIndex(TrackDatabaseHelper.CacheTable.COLUMN_PATH));
+            entry.sizeBytes = c.getLong(c.getColumnIndex(TrackDatabaseHelper.CacheTable.COLUMN_SIZE_BYTES));
+            entry.accessCount = c.getLong(c.getColumnIndex(TrackDatabaseHelper.CacheTable.COLUMN_ACCESS_COUNT));
+            entry.lastAccessTime = c.getLong(c.getColumnIndex(TrackDatabaseHelper.CacheTable.COLUMN_LAST_ACCESS_TIME));
+            entries.add(entry);
+            c.moveToNext();
+        }
+        c.close();
+
+        return entries;
+    }
+
 
 }

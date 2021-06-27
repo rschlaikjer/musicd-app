@@ -1,6 +1,7 @@
 package com.schlaikjer.music;
 
 import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.os.Bundle;
@@ -24,6 +25,8 @@ import com.schlaikjer.music.model.Track;
 import com.schlaikjer.music.service.MediaService;
 import com.schlaikjer.music.utility.NetworkManager;
 import com.schlaikjer.music.utility.PlaylistManager;
+import com.schlaikjer.music.utility.StorageManager;
+import com.schlaikjer.music.utility.ThreadManager;
 
 import java.util.List;
 import java.util.Random;
@@ -107,6 +110,9 @@ public class MainActivity extends AppCompatActivity {
             }
             Log.d(TAG, "Playlist init'd");
         }
+
+        final Context appContext = getApplicationContext();
+        ThreadManager.runOnBgThread(() -> StorageManager.gcContentCache(appContext));
 
         bindService(new Intent(this, MediaService.class), mediaServiceConnection, BIND_AUTO_CREATE);
     }

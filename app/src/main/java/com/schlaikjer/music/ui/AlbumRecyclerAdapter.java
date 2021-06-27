@@ -137,7 +137,7 @@ public class AlbumRecyclerAdapter extends RecyclerView.Adapter<AlbumRecyclerAdap
         viewHolder.artistText.setOnClickListener(listener);
 
         // Try and load an image
-        viewHolder.imageView.setImageDrawable(_appContext.getResources().getDrawable(R.drawable.ic_baseline_library_music_48));
+        viewHolder.imageView.setImageDrawable(_appContext.getDrawable(R.drawable.ic_baseline_library_music_48));
 
         ThreadManager.runOnBgThread(() -> {
             // Attempt to find an already loaded image for this album

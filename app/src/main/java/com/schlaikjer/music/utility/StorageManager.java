@@ -1,15 +1,25 @@
 package com.schlaikjer.music.utility;
 
 import android.content.Context;
+import android.util.Log;
+
+import com.schlaikjer.music.db.TrackDatabase;
+import com.schlaikjer.music.model.CacheEntry;
 
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.List;
 
 public class StorageManager {
 
+    public static final String TAG = StorageManager.class.getSimpleName();
+
     private static final char[] HEX_ARRAY = "0123456789ABCDEF".toCharArray();
+
+    private static final long GIGABYTE = 1024 * 1024 * 1024;
+    private static final long MAX_CACHE_SIZE_BYTES = 4 * GIGABYTE;
 
     static String bytesToHex(byte[] data) {
         char[] hexChars = new char[data.length * 2];
@@ -28,6 +38,12 @@ public class StorageManager {
         // Write out the data
         try (FileOutputStream fos = context.openFileOutput(filename, Context.MODE_PRIVATE)) {
             fos.write(data);
+
+            // Add a cache entry to the DB on success
+            CacheEntry entry = new CacheEntry();
+            entry.checksum = checksum;
+            entry.sizeBytes = data.length;
+            TrackDatabase.getInstance(context).addCacheEntry(entry);
         } catch (FileNotFoundException e) {
             e.printStackTrace();
         } catch (IOException e) {
@@ -50,9 +66,50 @@ public class StorageManager {
             throw new RuntimeException();
         }
 
+        // Increment access counter / time for this blob
+        TrackDatabase.getInstance(context).accessCacheEntry(checksum);
+
         String filename = bytesToHex(checksum);
         File file = new File(context.getFilesDir(), filename);
         return file.getAbsolutePath();
     }
+
+    public static boolean deleteContentFile(Context context, byte[] checksum) {
+        String path = getContentFilePath(context, checksum);
+        File file = new File(path);
+        return file.delete();
+    }
+
+    public static void gcContentCache(Context context) {
+        // Iterate the files in the cache directory, order by age, and sum the total byte size.
+        // If the total file size exceeds the max cache allowance, delete files starting with the
+        // oldest until we are under budget.
+        List<CacheEntry> entries = TrackDatabase.getInstance(context).getCacheEntries();
+
+        // Get the total size
+        long cacheSizeTotal = 0;
+        for (CacheEntry entry : entries) {
+            cacheSizeTotal += entry.sizeBytes;
+        }
+        Log.d(TAG, "Starting GC of content cache - initial size: " + cacheSizeTotal);
+
+        // Remove cache entries until we are under the limit
+        while (cacheSizeTotal > MAX_CACHE_SIZE_BYTES) {
+            // Get the next oldest entry
+            CacheEntry entry = entries.remove(0);
+
+            // Unlink it
+            File file = new File(entry.path);
+            if (!file.delete()) {
+                Log.w(TAG, "Failed to delete cache entry " + entry.path);
+            } else {
+                Log.i(TAG, "Gc'd cache entry " + entry.path + ", atime: " + entry.lastAccessTime + ", access count: " + entry.accessCount + ", size: " + entry.sizeBytes);
+            }
+
+            // Decrement cache size
+            cacheSizeTotal -= entry.sizeBytes;
+        }
+    }
+
 
 }
