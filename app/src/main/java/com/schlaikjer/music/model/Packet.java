@@ -33,7 +33,7 @@ public class Packet {
 
     public static Packet deserialize(ByteArrayOutputStream is) throws IOException {
         // Are there even enough bytes for a header
-        Log.d(TAG, "Attempt to deserialize is with " + is.size() + " bytes");
+        // Log.d(TAG, "Attempt to deserialize is with " + is.size() + " bytes");
         if (is.size() < HEADER_SIZE) {
             return null;
         }
@@ -44,7 +44,7 @@ public class Packet {
         int nonce = buffer.getInt(0);
         int opcode = buffer.getInt(4);
         int data_len = buffer.getInt(8);
-        Log.d(TAG, "Packet header: nonce: " + nonce + " opcode: " + opcode + " data len: " + data_len);
+        // Log.d(TAG, "Packet header: nonce: " + nonce + " opcode: " + opcode + " data len: " + data_len);
 
         // Is there enough data in this stream to populate the packet?
         if (data.length < data_len + HEADER_SIZE) {

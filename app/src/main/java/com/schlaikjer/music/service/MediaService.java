@@ -37,6 +37,7 @@ public class MediaService extends Service implements MediaPlayer.OnErrorListener
     }
 
     MediaPlayer player;
+    boolean playerPrepared = false;
 
     @Nullable
     @Override
@@ -62,6 +63,36 @@ public class MediaService extends Service implements MediaPlayer.OnErrorListener
         super.onDestroy();
     }
 
+    public boolean next() {
+        PlaylistManager.popFront(this);
+        return play();
+    }
+
+    public boolean prev() {
+        return true;
+    }
+
+    public boolean toggle() {
+        if (playerPrepared) {
+            if (player.isPlaying()) {
+                player.pause();
+            } else {
+                player.start();
+            }
+        } else {
+            return play();
+        }
+        return true;
+    }
+
+    public boolean stop() {
+        if (!player.isPlaying()) {
+            return true;
+        }
+        player.stop();
+        return true;
+    }
+
     public boolean play() {
         // Fetch current playlist
         List<byte[]> playlist = PlaylistManager.getPlaylist(this);
@@ -83,6 +114,8 @@ public class MediaService extends Service implements MediaPlayer.OnErrorListener
                 Log.d(TAG, "Playing track " + track.raw_path);
             }
             player.reset();
+            playerPrepared = false;
+
             try {
                 player.setDataSource(trackPath);
             } catch (IOException e) {
@@ -133,6 +166,7 @@ public class MediaService extends Service implements MediaPlayer.OnErrorListener
     @Override
     public boolean onError(MediaPlayer mp, int what, int extra) {
         Log.w(TAG, "Media player error: " + what + ", extra: " + extra);
+        playerPrepared = false;
         return false;
     }
 
@@ -157,6 +191,7 @@ public class MediaService extends Service implements MediaPlayer.OnErrorListener
      */
     @Override
     public void onPrepared(MediaPlayer mp) {
+        playerPrepared = true;
         player.start();
     }
 

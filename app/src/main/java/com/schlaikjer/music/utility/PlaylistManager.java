@@ -3,7 +3,9 @@ package com.schlaikjer.music.utility;
 import android.content.Context;
 
 import com.schlaikjer.music.db.TrackDatabase;
+import com.schlaikjer.music.model.Track;
 
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -12,6 +14,31 @@ public class PlaylistManager {
     private static List<byte[]> currentPlaylist = null;
 
     private static final int TRACK_PREFETCH_LEN = 4;
+
+    private static List<WeakReference<PlaylistChangedListener>> playlistChangedListeners = new ArrayList<>();
+
+    public interface PlaylistChangedListener {
+        void onPlaylistChanged();
+    }
+
+    public static void addOnPlaylistChangedListener(PlaylistChangedListener listener) {
+        playlistChangedListeners.add(new WeakReference<>(listener));
+    }
+
+    private static void notifyPlaylistChanged() {
+        ThreadManager.runOnUIThread(new Runnable() {
+            @Override
+            public void run() {
+                for (WeakReference<PlaylistChangedListener> listener : playlistChangedListeners) {
+                    if (listener.get() == null) {
+                        playlistChangedListeners.remove(listener);
+                    } else {
+                        listener.get().onPlaylistChanged();
+                    }
+                }
+            }
+        });
+    }
 
     public static List<byte[]> getPlaylist(Context context) {
         // If the cached playlist is null, fetch from DB
@@ -22,10 +49,25 @@ public class PlaylistManager {
         return currentPlaylist;
     }
 
+    public static List<Track> getPlaylistTracks(Context context) {
+        // If the cached playlist is null, fetch from DB
+        if (currentPlaylist == null) {
+            currentPlaylist = TrackDatabase.getInstance(context).getPlaylist();
+        }
+
+        List<Track> tracks = new ArrayList<>();
+        for (byte[] hash : currentPlaylist) {
+            tracks.add(TrackDatabase.getInstance(context).getTrack(hash));
+        }
+
+        return tracks;
+    }
+
     public static List<byte[]> setPlaylist(Context context, List<byte[]> playlist) {
         currentPlaylist = playlist;
         cachePlaylist(context);
         prefetchTracks(context);
+        notifyPlaylistChanged();
         return currentPlaylist;
     }
 
@@ -37,6 +79,7 @@ public class PlaylistManager {
         currentPlaylist.add(track);
         cachePlaylist(context);
         prefetchTracks(context);
+        notifyPlaylistChanged();
         return currentPlaylist;
     }
 
@@ -52,6 +95,7 @@ public class PlaylistManager {
         }
 
         cachePlaylist(context);
+        notifyPlaylistChanged();
 
         return currentPlaylist;
     }

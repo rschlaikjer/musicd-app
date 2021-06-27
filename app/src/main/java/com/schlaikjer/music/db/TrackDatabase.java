@@ -13,7 +13,9 @@ import com.schlaikjer.music.model.CacheEntry;
 import com.schlaikjer.music.model.Track;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class TrackDatabase {
 
@@ -241,7 +243,6 @@ public class TrackDatabase {
             album.parent_path = c.getString(c.getColumnIndex(TrackDatabaseHelper.TracksTable.COLUMN_PARENT_PATH));
             album.artist = c.getString(c.getColumnIndex(TrackDatabaseHelper.TracksTable.COLUMN_TAG_ARTIST));
             album.name = c.getString(c.getColumnIndex(TrackDatabaseHelper.TracksTable.COLUMN_TAG_ALBUM));
-            album.artist = c.getString(c.getColumnIndex(TrackDatabaseHelper.TracksTable.COLUMN_TAG_ARTIST));
 
             // For each album, fetch the set of content addresses for images that could be used as covers
             album.coverImageChecksums = getImageChecksumsForParentPath(album.parent_path);
@@ -255,37 +256,51 @@ public class TrackDatabase {
     }
 
     public List<Album> getDirectoryAlbums(String basedir) {
-        // Select distinct album names
+        // Select distinct directories from the common basedir
         SQLiteDatabase database = helper.getReadableDatabase();
         Cursor c = database.query(
                 true, // distinct
                 TrackDatabaseHelper.TracksTable.TABLE_NAME,
                 new String[]{
                         TrackDatabaseHelper.TracksTable.COLUMN_PARENT_PATH,
-                        TrackDatabaseHelper.TracksTable.COLUMN_TAG_ALBUM,
-                        TrackDatabaseHelper.TracksTable.COLUMN_TAG_ARTIST,
-                        TrackDatabaseHelper.TracksTable.COLUMN_TAG_YEAR,
                 },
                 TrackDatabaseHelper.TracksTable.COLUMN_PARENT_PATH + " LIKE $1", // No select
                 new String[]{basedir + "%"}, // No select args
-                TrackDatabaseHelper.TracksTable.COLUMN_PARENT_PATH + ", " +
-                        TrackDatabaseHelper.TracksTable.COLUMN_TAG_ARTIST, // Group
+                TrackDatabaseHelper.TracksTable.COLUMN_PARENT_PATH, // Group
                 null, // Having
                 null, // Order
                 null // Limit
         );
 
+        Set<String> prefixSet = new HashSet<>();
         List<Album> albums = new ArrayList<>();
         c.moveToFirst();
         while (!c.isAfterLast()) {
+            // Split the parent path on /
+            String parentPath = c.getString(c.getColumnIndex(TrackDatabaseHelper.TracksTable.COLUMN_PARENT_PATH));
+            String childPath = parentPath.substring(basedir.length());
+            String[] childPathFragments = childPath.split("/");
+            // baseChild is first non-empty path fragment
+            String baseChild = "";
+            for (int i = 0; i < childPathFragments.length; i++) {
+                if (childPathFragments[i].length() > 0) {
+                    baseChild = childPathFragments[i];
+                    break;
+                }
+            }
+            if (prefixSet.contains(baseChild)) {
+                c.moveToNext();
+                continue;
+            }
+
+            prefixSet.add(baseChild);
             Album album = new Album();
-            album.parent_path = c.getString(c.getColumnIndex(TrackDatabaseHelper.TracksTable.COLUMN_PARENT_PATH));
-            album.artist = c.getString(c.getColumnIndex(TrackDatabaseHelper.TracksTable.COLUMN_TAG_ARTIST));
-            album.name = c.getString(c.getColumnIndex(TrackDatabaseHelper.TracksTable.COLUMN_TAG_ALBUM));
-            album.artist = c.getString(c.getColumnIndex(TrackDatabaseHelper.TracksTable.COLUMN_TAG_ARTIST));
+            album.parent_path = basedir + baseChild;
+            album.artist = baseChild;
+            album.name = baseChild;
 
             // For each album, fetch the set of content addresses for images that could be used as covers
-            album.coverImageChecksums = getImageChecksumsForParentPath(album.parent_path);
+            album.coverImageChecksums = getImageChecksumsForParentPath(parentPath);
 
             albums.add(album);
             c.moveToNext();
@@ -348,7 +363,7 @@ public class TrackDatabase {
 
     public void accessCacheEntry(byte[] hash) {
         SQLiteDatabase database = helper.getWritableDatabase();
-        database.execSQL("UPDATE " + TrackDatabaseHelper.CacheTable.TABLE_NAME + " SET " + TrackDatabaseHelper.CacheTable.COLUMN_ACCESS_COUNT + " = " + TrackDatabaseHelper.CacheTable.COLUMN_ACCESS_COUNT + " + 1, " + TrackDatabaseHelper.CacheTable.COLUMN_LAST_ACCESS_TIME + " = $1", new Object[]{System.currentTimeMillis()});
+        database.execSQL("UPDATE " + TrackDatabaseHelper.CacheTable.TABLE_NAME + " SET " + TrackDatabaseHelper.CacheTable.COLUMN_ACCESS_COUNT + " = " + TrackDatabaseHelper.CacheTable.COLUMN_ACCESS_COUNT + " + 1, " + TrackDatabaseHelper.CacheTable.COLUMN_LAST_ACCESS_TIME + " = $1 WHERE " + TrackDatabaseHelper.CacheTable.COLUMN_CHECKSUM + " = $2", new Object[]{System.currentTimeMillis(), hash});
     }
 
     public List<CacheEntry> getCacheEntries() {

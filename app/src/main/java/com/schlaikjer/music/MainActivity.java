@@ -55,6 +55,14 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
+    public MediaService getMediaService() {
+        if (serviceBinder == null) {
+            return null;
+        }
+
+        return serviceBinder.service;
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
