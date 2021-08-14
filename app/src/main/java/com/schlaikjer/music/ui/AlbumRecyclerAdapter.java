@@ -17,7 +17,6 @@ import com.schlaikjer.music.listener.TrackSelectedListener;
 import com.schlaikjer.music.model.Album;
 import com.schlaikjer.music.utility.NetworkManager;
 import com.schlaikjer.music.utility.StorageManager;
-import com.schlaikjer.music.utility.ThreadManager;
 import com.squareup.picasso.Picasso;
 
 import java.util.ArrayList;
@@ -128,36 +127,41 @@ public class AlbumRecyclerAdapter extends RecyclerView.Adapter<AlbumRecyclerAdap
         final Album album = _albums.get(position);
         viewHolder.album = album;
 
+        // Invalidate previous picasso requests
+        Picasso.get().cancelRequest(viewHolder.imageView);
+
         View.OnClickListener listener = v -> albumSelectedListener.onAlbumSelected(album);
         viewHolder.imageView.setOnClickListener(listener);
         viewHolder.albumText.setOnClickListener(listener);
 
-        // Try and load an image
-        ThreadManager.runOnBgThread(() -> {
-            // Attempt to find an already loaded image for this album
-            Log.d(TAG, "Trying to load cached album art for album '" + album.name + "'");
-            for (byte[] checksum : album.coverImageChecksums) {
-                Log.d(TAG, "Checking for cached content hash " + StorageManager.bytesToHex(checksum));
-                if (StorageManager.hasContentFile(_appContext, checksum)) {
-                    // Load into UI
-                    ThreadManager.runOnUIThread(() -> Picasso.get()
-                            .load(StorageManager.getContentFile(_appContext, checksum))
-                            .placeholder(R.drawable.ic_baseline_image_48)
-                            .into(viewHolder.imageView));
-                    return;
-                }
+        // Attempt to find an already loaded image for this album
+        Log.d(TAG, "Trying to load cached album art for album '" + album.name + "'");
+        boolean didLoadImage = false;
+        for (byte[] checksum : album.coverImageChecksums) {
+            Log.d(TAG, "Checking for cached content hash " + StorageManager.bytesToHex(checksum));
+            if (StorageManager.hasContentFile(_appContext, checksum)) {
+                // Load into UI
+                didLoadImage = true;
+                Picasso.get()
+                        .load(StorageManager.getContentFile(_appContext, checksum))
+                        .placeholder(R.drawable.ic_baseline_image_48)
+                        .error(R.drawable.ic_baseline_image_48)
+                        .into(viewHolder.imageView);
+                break;
             }
+        }
+        if (!didLoadImage) {
+            viewHolder.imageView.setImageDrawable(_appContext.getDrawable(R.drawable.ic_baseline_image_48));
+        }
 
-            // If no images exist on disk, try and fetch them serially
-            Log.d(TAG, "Trying to download album art for album '" + album.name + "'");
-            imageFetchContinuation(viewHolder.imageView, album.coverImageChecksums);
-
-        });
+        // If no images exist on disk, try and fetch them serially
+        Log.d(TAG, "Trying to download album art for album '" + album.name + "'");
+        imageFetchContinuation(viewHolder, album.parent_path, album.coverImageChecksums);
 
         viewHolder.albumText.setText(viewHolder.album.name);
     }
 
-    void imageFetchContinuation(ImageView imageView, List<byte[]> coverImageChecksums) {
+    void imageFetchContinuation(ViewHolder holder, String parent_path, List<byte[]> coverImageChecksums) {
         // No checksums, nothing to do
         if (coverImageChecksums.size() == 0) {
             return;
@@ -169,15 +173,10 @@ public class AlbumRecyclerAdapter extends RecyclerView.Adapter<AlbumRecyclerAdap
         NetworkManager.fetchImage(checksum, new NetworkManager.ContentFetchCallback() {
             @Override
             public void onContentReceived(byte[] data) {
-                // Save the image to local storage
+                // Save the image to local storage for next time
                 StorageManager.saveContentFile(_appContext, checksum, data);
-
-                // Load into UI
-                ThreadManager.runOnUIThread(() -> Picasso.get()
-                        .load(StorageManager.getContentFile(_appContext, checksum))
-                        .placeholder(R.drawable.ic_baseline_image_48)
-                        .into(imageView));
             }
+
 
             @Override
             public void onAbort() {
@@ -185,9 +184,7 @@ public class AlbumRecyclerAdapter extends RecyclerView.Adapter<AlbumRecyclerAdap
 
                 // Try again with next one
                 coverImageChecksums.remove(0);
-                if (coverImageChecksums.size() > 0) {
-                    imageFetchContinuation(imageView, coverImageChecksums);
-                }
+                imageFetchContinuation(holder, parent_path, coverImageChecksums);
             }
         });
     }
@@ -195,6 +192,16 @@ public class AlbumRecyclerAdapter extends RecyclerView.Adapter<AlbumRecyclerAdap
     @Override
     public int getItemCount() {
         return _albums.size();
+    }
+
+    @Override
+    public long getItemId(int position) {
+        return position;
+    }
+
+    @Override
+    public int getItemViewType(int position) {
+        return position;
     }
 }
 

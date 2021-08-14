@@ -1,8 +1,6 @@
 package com.schlaikjer.music.ui;
 
 import android.content.Context;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -17,7 +15,6 @@ import com.schlaikjer.music.db.TrackDatabase;
 import com.schlaikjer.music.model.Track;
 import com.schlaikjer.music.utility.NetworkManager;
 import com.schlaikjer.music.utility.StorageManager;
-import com.schlaikjer.music.utility.ThreadManager;
 import com.squareup.picasso.Picasso;
 
 import java.util.ArrayList;
@@ -82,42 +79,43 @@ public class PlaylistRecyclerAdapter extends RecyclerView.Adapter<PlaylistRecycl
         final Track track = _tracks.get(position);
         viewHolder.track = track;
 
-        // Try and load an image
-        viewHolder.imageView.setImageDrawable(_appContext.getDrawable(R.drawable.ic_baseline_library_music_48));
 
-        ThreadManager.runOnBgThread(() -> {
-            // Attempt to find an already loaded image for this album
-            TrackDatabase db = TrackDatabase.getInstance(_appContext);
-            List<byte[]> imageCandidates = db.getImageChecksumsForParentPath(track.parent_path);
-            for (byte[] checksum : imageCandidates) {
-                if (StorageManager.hasContentFile(_appContext, checksum)) {
-                    // Load into UI
-                    ThreadManager.runOnUIThread(() -> Picasso.get()
-                            .load(StorageManager.getContentFile(_appContext, checksum))
-                            .placeholder(R.drawable.ic_baseline_image_48)
-                            .into(viewHolder.imageView));
-                    return;
-                }
+        // Attempt to find an already loaded image for this album
+        TrackDatabase db = TrackDatabase.getInstance(_appContext);
+        List<byte[]> imageCandidates = db.getImageChecksumsForParentPath(track.parent_path);
+        boolean didLoadImage = false;
+        for (byte[] checksum : imageCandidates) {
+            if (StorageManager.hasContentFile(_appContext, checksum)) {
+                // Load into UI
+                didLoadImage = true;
+                Picasso.get()
+                        .load(StorageManager.getContentFile(_appContext, checksum))
+                        .placeholder(R.drawable.ic_baseline_image_48)
+                        .error(R.drawable.ic_baseline_image_48)
+                        .into(viewHolder.imageView);
+                break;
             }
+        }
+        if (!didLoadImage) {
+            viewHolder.imageView.setImageDrawable(_appContext.getDrawable(R.drawable.ic_baseline_image_48));
+        }
 
-            
-            // If no images exist on disk, try and fetch them serially
-            imageFetchContinuation(viewHolder.imageView, imageCandidates);
-        });
+        // If no images exist on disk, try and fetch them serially
+        imageFetchContinuation(viewHolder, track.checksum, imageCandidates);
 
         viewHolder.titleText.setText(viewHolder.track.tag_title);
         viewHolder.subtitleText.setText(viewHolder.track.tag_artist + " / " + viewHolder.track.tag_album);
-        viewHolder.rootView.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                trackSelectedListener.onTrackSelected(position, track.checksum);
-            }
-        });
+        viewHolder.rootView.setOnClickListener(v -> trackSelectedListener.onTrackSelected(position, track.checksum));
     }
 
-    void imageFetchContinuation(ImageView imageView, List<byte[]> coverImageChecksums) {
+    void imageFetchContinuation(ViewHolder holder, byte[] trackChecksum, List<byte[]> coverImageChecksums) {
         // No checksums, nothing to do
         if (coverImageChecksums.size() == 0) {
+            return;
+        }
+
+        // If the holder is now owned by another item, bail
+        if (holder.track.checksum != trackChecksum) {
             return;
         }
 
@@ -127,14 +125,8 @@ public class PlaylistRecyclerAdapter extends RecyclerView.Adapter<PlaylistRecycl
         NetworkManager.fetchImage(checksum, new NetworkManager.ContentFetchCallback() {
             @Override
             public void onContentReceived(byte[] data) {
-                // Save the image to local storage
+                // Save the image to local storage for next time
                 StorageManager.saveContentFile(_appContext, checksum, data);
-
-                // Load into UI
-                ThreadManager.runOnUIThread(() -> Picasso.get()
-                        .load(StorageManager.getContentFile(_appContext, checksum))
-                        .placeholder(R.drawable.ic_baseline_image_48)
-                        .into(imageView));
             }
 
             @Override
@@ -144,7 +136,7 @@ public class PlaylistRecyclerAdapter extends RecyclerView.Adapter<PlaylistRecycl
                 // Try again with next one
                 coverImageChecksums.remove(0);
                 if (coverImageChecksums.size() > 0) {
-                    imageFetchContinuation(imageView, coverImageChecksums);
+                    imageFetchContinuation(holder, trackChecksum, coverImageChecksums);
                 }
             }
         });
