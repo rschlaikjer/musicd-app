@@ -30,7 +30,6 @@ import com.schlaikjer.music.db.TrackDatabase;
 import com.schlaikjer.music.model.Album;
 import com.schlaikjer.music.model.Track;
 import com.schlaikjer.music.service.MediaService;
-import com.schlaikjer.music.utility.NetworkManager;
 import com.schlaikjer.music.utility.PlaylistManager;
 import com.schlaikjer.music.utility.StorageManager;
 import com.schlaikjer.music.utility.ThreadManager;
@@ -118,28 +117,9 @@ public class MainActivity extends AppCompatActivity {
         }
 
         if (item.getItemId() == R.id.ation_prefetch_art) {
-            final Context appContext = getApplicationContext();
-            ThreadManager.runOnBgThread(() -> {
-                // Just get all the image content hashes
-                List<byte[]> imageChecksums = TrackDatabase.getInstance(appContext).getImageChecksumsForParentPath("");
-                for (byte[] checksum : imageChecksums) {
-                    if (!StorageManager.hasContentFile(appContext, checksum)) {
-                        NetworkManager.fetchImage(checksum, new NetworkManager.ContentFetchCallback() {
-                            @Override
-                            public void onContentReceived(byte[] data) {
-                                StorageManager.saveContentFile(appContext, checksum, data);
-                            }
-
-                            @Override
-                            public void onAbort() {
-                            }
-                        });
-                    }
-                }
-            });
+            StorageManager.prefetchArt(this);
             return true;
         }
-
 
         if (item.getItemId() == R.id.action_add_random) {
             AlertDialog.Builder builder = new AlertDialog.Builder(this);

@@ -1,5 +1,7 @@
 package com.schlaikjer.music.utility;
 
+import android.content.Context;
+import android.net.ConnectivityManager;
 import android.util.Log;
 
 import com.google.protobuf.InvalidProtocolBufferException;
@@ -117,6 +119,11 @@ public class NetworkManager {
             _callbacks.clear();
             _active_content_requests.clear();
         }
+    }
+
+    public static boolean isOnWifi(Context context) {
+        ConnectivityManager connectivityManager = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+        return connectivityManager.getNetworkInfo(ConnectivityManager.TYPE_WIFI).isConnected();
     }
 
     private static void networkLoop() {

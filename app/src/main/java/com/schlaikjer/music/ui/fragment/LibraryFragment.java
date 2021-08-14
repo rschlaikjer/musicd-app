@@ -23,6 +23,7 @@ import com.schlaikjer.music.model.Album;
 import com.schlaikjer.music.model.Track;
 import com.schlaikjer.music.ui.AlbumRecyclerAdapter;
 import com.schlaikjer.music.utility.NetworkManager;
+import com.schlaikjer.music.utility.StorageManager;
 import com.schlaikjer.music.utility.ThreadManager;
 
 import java.util.List;
@@ -55,6 +56,12 @@ public class LibraryFragment extends Fragment implements AlbumSelectedListener, 
             public void onDatabaseFetched(TrackOuterClass.MusicDatabase db) {
                 TrackDatabase.getInstance(appContext).setDatabase(db);
                 final List<Album> albums = TrackDatabase.getInstance(appContext).getDirectoryAlbums(baseDir);
+
+                // If we are on wifi, prefetch album art
+                if (NetworkManager.isOnWifi(appContext)) {
+                    StorageManager.prefetchArt(appContext);
+                }
+
                 ThreadManager.runOnUIThread(() -> {
                     recyclerAdapter.setAlbumList(albums);
                     swipeRefresh.setRefreshing(false);
@@ -91,6 +98,13 @@ public class LibraryFragment extends Fragment implements AlbumSelectedListener, 
                 public void onDatabaseFetched(TrackOuterClass.MusicDatabase db) {
                     TrackDatabase.getInstance(appContext).setDatabase(db);
                     final List<Album> albums = TrackDatabase.getInstance(appContext).getDirectoryAlbums(baseDir);
+
+                    // If we are on wifi, prefetch album art
+                    if (NetworkManager.isOnWifi(appContext)) {
+                        StorageManager.prefetchArt(appContext);
+                    }
+
+                    // Post the DB to the UI thread
                     ThreadManager.runOnUIThread(() -> {
                         recyclerAdapter.setAlbumList(albums);
                         swipeRefresh.setRefreshing(false);

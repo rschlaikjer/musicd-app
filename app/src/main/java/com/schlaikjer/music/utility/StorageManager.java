@@ -110,6 +110,54 @@ public class StorageManager {
         return file.delete();
     }
 
+    public static void prefetchArt(Context context) {
+        // Get a firm contextreference and a list of checksums
+        final Context appContext = context.getApplicationContext();
+        List<byte[]> imageChecksums = TrackDatabase.getInstance(appContext).getImageChecksumsForParentPath("");
+
+        // Spawn a series of continuations to fetch images one by one
+        // This is to prevent us queuing so many requests that we starve other traffic
+        ThreadManager.runOnBgThread(() -> {
+            prefetchArtContinuation(appContext, imageChecksums);
+        });
+    }
+
+    private static void prefetchArtContinuation(Context context, List<byte[]> checksums) {
+        do {
+            // Did we run out of hashes?
+            if (checksums.size() == 0) {
+                return;
+            }
+
+            // Fetch next hash
+            byte[] checksum = checksums.remove(0);
+
+            // If we already have it, take the next one
+            if (StorageManager.hasContentFile(context, checksum)) {
+                continue;
+            }
+
+            // Initiate request
+            NetworkManager.fetchImage(checksum, new NetworkManager.ContentFetchCallback() {
+                @Override
+                public void onContentReceived(byte[] data) {
+                    StorageManager.saveContentFile(context, checksum, data);
+
+                    // Daisy chain to next continuation
+                    prefetchArtContinuation(context, checksums);
+                }
+
+                @Override
+                public void onAbort() {
+                    // Daisy chain to next continuation
+                    prefetchArtContinuation(context, checksums);
+                }
+            });
+
+            return;
+        } while (true);
+    }
+
     public static void gcContentCache(Context context) {
         // Iterate the files in the cache directory, order by age, and sum the total byte size.
         // If the total file size exceeds the max cache allowance, delete files starting with the
