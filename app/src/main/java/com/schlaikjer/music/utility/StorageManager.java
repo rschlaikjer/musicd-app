@@ -19,7 +19,7 @@ public class StorageManager {
     private static final char[] HEX_ARRAY = "0123456789ABCDEF".toCharArray();
 
     private static final long GIGABYTE = 1024 * 1024 * 1024;
-    private static final long MAX_CACHE_SIZE_BYTES = 4 * GIGABYTE;
+    public static final long DEFAULT_MAX_CACHE_SIZE_BYTES = 4 * GIGABYTE;
 
     public static String bytesToHex(byte[] data) {
         char[] hexChars = new char[data.length * 2];
@@ -64,6 +64,7 @@ public class StorageManager {
             // Add a cache entry to the DB on success
             CacheEntry entry = new CacheEntry();
             entry.checksum = checksum;
+            entry.path = getContentFilePath(context, checksum);
             entry.sizeBytes = data.length;
             TrackDatabase.getInstance(context).addCacheEntry(entry);
         } catch (FileNotFoundException e) {
@@ -123,9 +124,16 @@ public class StorageManager {
         Log.d(TAG, "Starting GC of content cache - initial size: " + cacheSizeTotal);
 
         // Remove cache entries until we are under the limit
-        while (cacheSizeTotal > MAX_CACHE_SIZE_BYTES) {
+        long maxCacheSize = PreferencesManager.getSharedPreferences(context).getLong(PreferencesManager.Keys.MAX_CACHE_SIZE_BYTES, DEFAULT_MAX_CACHE_SIZE_BYTES);
+        while (cacheSizeTotal > maxCacheSize && entries.size() > 0) {
             // Get the next oldest entry
             CacheEntry entry = entries.remove(0);
+
+            Log.d(TAG, "Deleting cache entry " + entry.path);
+            if (entry.path == null) {
+                Log.w(TAG, "Cache entry missing path");
+                continue;
+            }
 
             // Unlink it
             File file = new File(entry.path);
@@ -138,6 +146,8 @@ public class StorageManager {
             // Decrement cache size
             cacheSizeTotal -= entry.sizeBytes;
         }
+
+        Log.d(TAG, "Final cache size: " + cacheSizeTotal);
     }
 
 

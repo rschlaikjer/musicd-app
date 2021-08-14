@@ -12,6 +12,11 @@
     <string name="ok">OK</string>
     <string name="cancel">Cancel</string>
     <string name="unimplemented">Unimplemented</string>
+    <string name="limit_cache_size">Limit cache size to %1$s</string>
+    <string name="garbage_collect_cache">GC Cache</string>
+    <string name="rescan_remote_db">Rescan Remote DB</string>
+
+    <string name="cache_size_s">Cache size: %1$s</string>
 
     <string name="menu_library">Library</string>
     <string name="menu_playlist">Playlist</string>
