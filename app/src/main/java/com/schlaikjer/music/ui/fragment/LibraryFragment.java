@@ -1,5 +1,6 @@
 package com.schlaikjer.music.ui.fragment;
 
+import android.app.Activity;
 import android.content.Context;
 import android.os.Bundle;
 import android.view.LayoutInflater;
@@ -113,7 +114,10 @@ public class LibraryFragment extends Fragment implements AlbumSelectedListener, 
                     reloadAlbumsAsync();
                 } else {
                     setEnabled(false);
-                    getActivity().onBackPressed();
+                    Activity activity = getActivity();
+                    if (activity != null) {
+                        activity.onBackPressed();
+                    }
                 }
             }
         });
