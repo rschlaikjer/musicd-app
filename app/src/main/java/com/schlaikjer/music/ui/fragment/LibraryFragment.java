@@ -71,11 +71,37 @@ public class LibraryFragment extends Fragment implements AlbumSelectedListener, 
         // Populate recyclerview async
         swipeRefresh.setRefreshing(true);
         ThreadManager.runOnBgThread(() -> {
+            // Fetch album list from DB
             final List<Album> albums = TrackDatabase.getInstance(getContext()).getDirectoryAlbums("");
-            ThreadManager.runOnUIThread(() -> {
-                fullAlbumList = albums;
-                LibraryFragment.this.recyclerAdapter.setAlbumList(albums);
-                swipeRefresh.setRefreshing(false);
+
+            // If there exist albums, post them to the DB
+            if (albums.size() > 0) {
+                ThreadManager.runOnUIThread(() -> {
+                    fullAlbumList = albums;
+                    LibraryFragment.this.recyclerAdapter.setAlbumList(albums);
+                    swipeRefresh.setRefreshing(false);
+                });
+                return;
+            }
+
+            // If the album list is empty, this might be first boot - try and fetch albums from the network
+            NetworkManager.fetchDatabase(new NetworkManager.DatabaseFetchCallback() {
+                @Override
+                public void onDatabaseFetched(TrackOuterClass.MusicDatabase db) {
+                    TrackDatabase.getInstance(appContext).setDatabase(db);
+                    final List<Album> albums = TrackDatabase.getInstance(appContext).getDirectoryAlbums(baseDir);
+                    ThreadManager.runOnUIThread(() -> {
+                        recyclerAdapter.setAlbumList(albums);
+                        swipeRefresh.setRefreshing(false);
+                    });
+                }
+
+                @Override
+                public void onAbort() {
+                    ThreadManager.runOnUIThread(() -> {
+                        swipeRefresh.setRefreshing(false);
+                    });
+                }
             });
         });
 
