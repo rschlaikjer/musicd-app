@@ -31,7 +31,7 @@ public class StorageManager {
         return new String(hexChars);
     }
 
-    private static File getContentFile(Context context, byte[] checksum) {
+    public static File getContentFile(Context context, byte[] checksum) {
         // Convert the checksum to hex for use as a filename
         String filename = bytesToHex(checksum);
 

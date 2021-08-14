@@ -9,7 +9,8 @@
         android:id="@+id/recycler_folder_image"
         android:layout_width="@dimen/playlist_image_width"
         android:layout_height="@dimen/playlist_image_height"
-        android:background="#ff0000" />
+        android:background="#bababa"
+        android:scaleType="centerCrop" />
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -21,15 +22,16 @@
             android:id="@+id/recycler_folder_top_text"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="#0000ff"
-            android:textAlignment="center" />
+            android:textAlignment="center"
+            android:textColor="#1D1D1D"
+            android:textStyle="bold" />
 
         <TextView
             android:id="@+id/recycler_folder_bottom_text"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="#00ff00"
-            android:textAlignment="center" />
+            android:textAlignment="center"
+            android:textColor="#757575" />
 
     </LinearLayout>
 

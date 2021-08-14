@@ -1,8 +1,6 @@
 package com.schlaikjer.music.ui;
 
 import android.content.Context;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -20,6 +18,7 @@ import com.schlaikjer.music.model.Album;
 import com.schlaikjer.music.utility.NetworkManager;
 import com.schlaikjer.music.utility.StorageManager;
 import com.schlaikjer.music.utility.ThreadManager;
+import com.squareup.picasso.Picasso;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -134,57 +133,63 @@ public class AlbumRecyclerAdapter extends RecyclerView.Adapter<AlbumRecyclerAdap
         viewHolder.albumText.setOnClickListener(listener);
 
         // Try and load an image
-        viewHolder.imageView.setScaleType(ImageView.ScaleType.CENTER);
-        viewHolder.imageView.setImageDrawable(_appContext.getDrawable(R.drawable.ic_baseline_image_48));
-
         ThreadManager.runOnBgThread(() -> {
             // Attempt to find an already loaded image for this album
             Log.d(TAG, "Trying to load cached album art for album '" + album.name + "'");
             for (byte[] checksum : album.coverImageChecksums) {
                 Log.d(TAG, "Checking for cached content hash " + StorageManager.bytesToHex(checksum));
                 if (StorageManager.hasContentFile(_appContext, checksum)) {
-                    // Try and load the image
-                    Log.d(TAG, "Using cached image content ID " + StorageManager.bytesToHex(checksum));
-                    Bitmap bitmap = BitmapFactory.decodeFile(StorageManager.getContentFilePath(_appContext, checksum));
-                    ThreadManager.runOnUIThread(() -> {
-                        if (viewHolder.album == album) {
-                            viewHolder.imageView.setScaleType(ImageView.ScaleType.CENTER_CROP);
-                            viewHolder.imageView.setImageBitmap(bitmap);
-                        }
-                    });
+                    // Load into UI
+                    ThreadManager.runOnUIThread(() -> Picasso.get()
+                            .load(StorageManager.getContentFile(_appContext, checksum))
+                            .placeholder(R.drawable.ic_baseline_image_48)
+                            .into(viewHolder.imageView));
                     return;
                 }
             }
 
-            // If no images exist on disk, try and fetch them
+            // If no images exist on disk, try and fetch them serially
             Log.d(TAG, "Trying to download album art for album '" + album.name + "'");
-            for (byte[] checksum : album.coverImageChecksums) {
-                Log.d(TAG, "Fetching image with content ID " + StorageManager.bytesToHex(checksum));
-                NetworkManager.fetchImage(checksum, new NetworkManager.ContentFetchCallback() {
-                    @Override
-                    public void onContentReceived(byte[] data) {
-                        // Save the image to local storage
-                        StorageManager.saveContentFile(_appContext, checksum, data);
-                        // Also load the data as a bitmap
-                        Bitmap bitmap = BitmapFactory.decodeByteArray(data, 0, data.length);
-                        // Load to image view
-                        ThreadManager.runOnUIThread(() -> {
-                            if (viewHolder.album == album) {
-                                viewHolder.imageView.setScaleType(ImageView.ScaleType.CENTER_CROP);
-                                viewHolder.imageView.setImageBitmap(bitmap);
-                            }
-                        });
-                    }
+            imageFetchContinuation(viewHolder.imageView, album.coverImageChecksums);
 
-                    @Override
-                    public void onAbort() {
-                        Log.w(TAG, "Failed to fetch art for album " + album.name);
-                    }
-                });
-            }
         });
 
         viewHolder.albumText.setText(viewHolder.album.name);
+    }
+
+    void imageFetchContinuation(ImageView imageView, List<byte[]> coverImageChecksums) {
+        // No checksums, nothing to do
+        if (coverImageChecksums.size() == 0) {
+            return;
+        }
+
+        // Pop the first checksum
+        byte[] checksum = coverImageChecksums.get(0);
+        Log.d(TAG, "Fetching image with content ID " + StorageManager.bytesToHex(checksum));
+        NetworkManager.fetchImage(checksum, new NetworkManager.ContentFetchCallback() {
+            @Override
+            public void onContentReceived(byte[] data) {
+                // Save the image to local storage
+                StorageManager.saveContentFile(_appContext, checksum, data);
+
+                // Load into UI
+                ThreadManager.runOnUIThread(() -> Picasso.get()
+                        .load(StorageManager.getContentFile(_appContext, checksum))
+                        .placeholder(R.drawable.ic_baseline_image_48)
+                        .into(imageView));
+            }
+
+            @Override
+            public void onAbort() {
+                Log.w(TAG, "Failed to fetch art with id " + StorageManager.bytesToHex(checksum));
+
+                // Try again with next one
+                coverImageChecksums.remove(0);
+                if (coverImageChecksums.size() > 0) {
+                    imageFetchContinuation(imageView, coverImageChecksums);
+                }
+            }
+        });
     }
 
     @Override
