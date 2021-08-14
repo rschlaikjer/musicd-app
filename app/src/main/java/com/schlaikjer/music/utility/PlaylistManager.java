@@ -59,8 +59,9 @@ public class PlaylistManager {
         }
 
         List<Track> tracks = new ArrayList<>();
+        TrackDatabase db = TrackDatabase.getInstance(context);
         for (byte[] hash : currentPlaylist) {
-            tracks.add(TrackDatabase.getInstance(context).getTrack(hash));
+            tracks.add(db.getTrack(hash));
         }
 
         return tracks;

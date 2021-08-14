@@ -55,12 +55,7 @@ public class PlaylistFragment extends Fragment implements PlaylistManager.Playli
 
         playlistRecycler = root.findViewById(R.id.fragment_gallery_recycler);
         playlistRecycler.setLayoutManager(new GridLayoutManager(getContext(), 1, RecyclerView.VERTICAL, false));
-        recyclerAdapter = new PlaylistRecyclerAdapter(getContext(), new PlaylistRecyclerAdapter.TrackSelectedListener() {
-            @Override
-            public void onTrackSelected(int position, byte[] track) {
-                getMainActivity().getMediaService().play(position);
-            }
-        });
+        recyclerAdapter = new PlaylistRecyclerAdapter(getContext(), (position, track) -> getMainActivity().getMediaService().play(position));
         recyclerAdapter.setPlaylist(PlaylistManager.getPlaylistTracks(getContext()));
         playlistRecycler.setHasFixedSize(true);
         playlistRecycler.setAdapter(recyclerAdapter);

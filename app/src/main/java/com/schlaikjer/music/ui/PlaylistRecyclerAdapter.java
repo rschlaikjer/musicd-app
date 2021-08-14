@@ -146,6 +146,17 @@ public class PlaylistRecyclerAdapter extends RecyclerView.Adapter<PlaylistRecycl
     public int getItemCount() {
         return _tracks.size();
     }
+
+    @Override
+    public long getItemId(int position) {
+        return position;
+    }
+
+    @Override
+    public int getItemViewType(int position) {
+        return position;
+    }
+
 }
 
 
