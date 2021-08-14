@@ -8,8 +8,12 @@ import android.os.Bundle;
 import android.os.IBinder;
 import android.util.Log;
 import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
+import android.widget.RadioButton;
 
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.drawerlayout.widget.DrawerLayout;
@@ -20,7 +24,9 @@ import androidx.navigation.ui.NavigationUI;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.navigation.NavigationView;
+import com.google.android.material.slider.Slider;
 import com.schlaikjer.music.db.TrackDatabase;
+import com.schlaikjer.music.model.Album;
 import com.schlaikjer.music.model.Track;
 import com.schlaikjer.music.service.MediaService;
 import com.schlaikjer.music.utility.NetworkManager;
@@ -28,8 +34,8 @@ import com.schlaikjer.music.utility.PlaylistManager;
 import com.schlaikjer.music.utility.StorageManager;
 import com.schlaikjer.music.utility.ThreadManager;
 
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -110,15 +116,6 @@ public class MainActivity extends AppCompatActivity {
         NavigationUI.setupActionBarWithNavController(this, navController, mAppBarConfiguration);
         NavigationUI.setupWithNavController(navigationView, navController);
 
-        List<Track> allTracks = TrackDatabase.getInstance(this).getAllTracks();
-        if (allTracks.size() > 0) {
-            Random rand = new Random();
-            for (int i = 0; i < 10; i++) {
-                PlaylistManager.append(this, allTracks.get(rand.nextInt(allTracks.size())).checksum);
-            }
-            Log.d(TAG, "Playlist init'd");
-        }
-
         final Context appContext = getApplicationContext();
         ThreadManager.runOnBgThread(() -> StorageManager.gcContentCache(appContext));
 
@@ -129,6 +126,66 @@ public class MainActivity extends AppCompatActivity {
     protected void onDestroy() {
         unbindService(mediaServiceConnection);
         super.onDestroy();
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
+        if (item.getItemId() == R.id.action_clear_playlist) {
+            PlaylistManager.clearPlaylist(this);
+            serviceBinder.service.stop();
+            return true;
+        }
+        if (item.getItemId() == R.id.action_add_random) {
+            AlertDialog.Builder builder = new AlertDialog.Builder(this);
+            builder.setCancelable(true).setTitle(R.string.add_random).setNegativeButton(R.string.cancel, (dialog, which) -> {
+                // Do nothing.
+            });
+
+            // Set root layout
+            View dialogLayout = getLayoutInflater().inflate(R.layout.dialog_add_random, null);
+            builder.setView(dialogLayout);
+            builder.setPositiveButton(R.string.ok, (dialog, which) -> {
+                // What class of thing are we adding?
+                RadioButton artists = dialogLayout.findViewById(R.id.dialog_add_random_artists);
+                RadioButton albums = dialogLayout.findViewById(R.id.dialog_add_random_albums);
+                RadioButton tracks = dialogLayout.findViewById(R.id.dialog_add_random_tracks);
+                Slider count = dialogLayout.findViewById(R.id.dialog_add_random_count);
+                int countToAdd = (int) count.getValue();
+                List<byte[]> tracksToAdd = new ArrayList<>();
+                TrackDatabase db = TrackDatabase.getInstance(this);
+
+                // Random artists
+                if (artists.isChecked()) {
+                    // db.getRandomArtists(count_to_add);
+                }
+
+                // Random albums
+                if (albums.isChecked()) {
+                    // Pick N random albums
+                    List<Album> albumList = db.getRandomAlbums(countToAdd);
+
+                    // Add all the tracks in those albums to the ingest list
+                    for (Album a : albumList) {
+                        // tracksToAdd.addAll(db.getTracksForAlbum(a.parent_path));
+                    }
+                }
+
+                // Random tracks
+                if (tracks.isChecked()) {
+                    List<Track> randomTracks = db.getRandomTracks(countToAdd);
+                    for (Track t : randomTracks) {
+                        tracksToAdd.add(t.checksum);
+                    }
+                }
+
+                PlaylistManager.append(this, tracksToAdd);
+            });
+
+            builder.create().show();
+            return true;
+        }
+
+        return super.onOptionsItemSelected(item);
     }
 
     @Override

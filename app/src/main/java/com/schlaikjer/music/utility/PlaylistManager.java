@@ -83,6 +83,18 @@ public class PlaylistManager {
         return currentPlaylist;
     }
 
+    public static List<byte[]> append(Context context, List<byte[]> tracks) {
+        if (currentPlaylist == null) {
+            getPlaylist(context);
+        }
+
+        currentPlaylist.addAll(tracks);
+        cachePlaylist(context);
+        prefetchTracks(context);
+        notifyPlaylistChanged();
+        return currentPlaylist;
+    }
+
     public static List<byte[]> popFront(Context context) {
         if (currentPlaylist == null) {
             getPlaylist(context);
@@ -98,6 +110,12 @@ public class PlaylistManager {
         notifyPlaylistChanged();
 
         return currentPlaylist;
+    }
+
+    public static void clearPlaylist(Context context) {
+        getPlaylist(context).clear();
+        cachePlaylist(context);
+        notifyPlaylistChanged();
     }
 
     private static void cachePlaylist(Context context) {

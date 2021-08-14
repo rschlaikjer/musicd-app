@@ -111,7 +111,7 @@ public class MediaService extends Service implements MediaPlayer.OnErrorListener
             String trackPath = StorageManager.getContentFilePath(this, trackChecksum);
             Track track = TrackDatabase.getInstance(this).getTrack(trackChecksum);
             if (track != null) {
-                Log.d(TAG, "Playing track " + track.raw_path);
+                Log.d(TAG, "Playing track " + track.raw_path + " local path: " + trackPath);
             }
             player.reset();
             playerPrepared = false;
