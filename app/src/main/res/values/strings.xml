@@ -8,13 +8,14 @@
     <string name="action_settings">Settings</string>
     <string name="clear_playlist">Clear Playlist</string>
     <string name="add_random">Add Random...</string>
+    <string name="prefetch_playlist">Prefetch Playlist</string>
     <string name="ok">OK</string>
     <string name="cancel">Cancel</string>
     <string name="unimplemented">Unimplemented</string>
 
-    <string name="menu_home">Home</string>
-    <string name="menu_gallery">Gallery</string>
-    <string name="menu_slideshow">Slideshow</string>
+    <string name="menu_library">Library</string>
+    <string name="menu_playlist">Playlist</string>
+    <string name="menu_stats">Stats</string>
 
     <string name="artists">Artists</string>
     <string name="albums">Albums</string>

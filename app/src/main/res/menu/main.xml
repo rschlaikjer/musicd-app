@@ -11,4 +11,9 @@
         android:orderInCategory="100"
         android:title="@string/add_random"
         app:showAsAction="never" />
+    <item
+        android:id="@+id/ation_prefetch_queue"
+        android:orderInCategory="100"
+        android:title="@string/prefetch_playlist"
+        app:showAsAction="never" />
 </menu>

@@ -10,7 +10,6 @@ import android.util.Log;
 
 import androidx.annotation.Nullable;
 
-import com.schlaikjer.music.MainActivity;
 import com.schlaikjer.music.db.TrackDatabase;
 import com.schlaikjer.music.model.Track;
 import com.schlaikjer.music.utility.NetworkManager;
@@ -23,7 +22,7 @@ import java.util.List;
 
 public class MediaService extends Service implements MediaPlayer.OnErrorListener, MediaPlayer.OnCompletionListener, MediaPlayer.OnPreparedListener, PlaylistManager.PlaylistChangedListener {
 
-    private static final String TAG = MainActivity.class.getSimpleName();
+    private static final String TAG = MediaService.class.getSimpleName();
 
     public class MediaServiceBinder extends Binder {
 
@@ -114,10 +113,14 @@ public class MediaService extends Service implements MediaPlayer.OnErrorListener
     }
 
     public boolean stop() {
+        isPlaying = false;
+        playerPrepared = false;
+
         if (!player.isPlaying()) {
             return true;
         }
         player.stop();
+
         return true;
     }
 
@@ -131,7 +134,13 @@ public class MediaService extends Service implements MediaPlayer.OnErrorListener
 
         // If it's empty, or the index is OOB, nothing to play
         if (playlist.size() == 0 || index >= playlist.size()) {
+            Log.w(TAG, "Failed to play index " + index + " with playlist of size " + playlist.size());
             return false;
+        }
+
+        // If we were previously playing something, stop
+        if (isPlaying) {
+            stop();
         }
 
 
@@ -147,7 +156,7 @@ public class MediaService extends Service implements MediaPlayer.OnErrorListener
             String trackPath = StorageManager.getContentFilePath(this, trackChecksum);
             Track track = TrackDatabase.getInstance(this).getTrack(trackChecksum);
             if (track != null) {
-                Log.d(TAG, "Playing track " + track.raw_path + " local path: " + trackPath);
+                Log.d(TAG, "Playing track index " + index + " " + track.raw_path + " local path: " + trackPath);
             }
             player.reset();
             playerPrepared = false;
@@ -167,7 +176,8 @@ public class MediaService extends Service implements MediaPlayer.OnErrorListener
 
         // If we don't have the file downloaded, need to make a network request
         final Context appContext = getApplicationContext();
-        final WeakReference<MediaService> serviceRef = new WeakReference(this);
+        final WeakReference<MediaService> serviceRef = new WeakReference<>(this);
+        Log.d(TAG, "Fetching track index " + index + " with ID " + StorageManager.bytesToHex(trackChecksum));
         NetworkManager.fetchTrack(trackChecksum, new NetworkManager.ContentFetchCallback() {
             @Override
             public void onContentReceived(byte[] data) {
@@ -216,8 +226,11 @@ public class MediaService extends Service implements MediaPlayer.OnErrorListener
      */
     @Override
     public void onCompletion(MediaPlayer mp) {
+        Log.d(TAG, "MediaPlayer onCompletion");
+
         // No longer playing
         isPlaying = false;
+        playerPrepared = false;
 
         // Pop the front of the playlist
         PlaylistManager.removeIndex(this, playIndex, true);

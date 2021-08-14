@@ -1,4 +1,4 @@
-package com.schlaikjer.music.ui.gallery;
+package com.schlaikjer.music.ui.fragment;
 
 import android.graphics.Canvas;
 import android.graphics.Paint;
@@ -17,12 +17,12 @@ import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.schlaikjer.music.MainActivity;
+import com.schlaikjer.music.ui.activity.MainActivity;
 import com.schlaikjer.music.R;
 import com.schlaikjer.music.ui.PlaylistRecyclerAdapter;
 import com.schlaikjer.music.utility.PlaylistManager;
 
-public class GalleryFragment extends Fragment implements PlaylistManager.PlaylistChangedListener {
+public class PlaylistFragment extends Fragment implements PlaylistManager.PlaylistChangedListener {
 
     @Override
     public void onPlaylistChanged() {
@@ -51,7 +51,7 @@ public class GalleryFragment extends Fragment implements PlaylistManager.Playlis
 
     public View onCreateView(@NonNull LayoutInflater inflater,
                              ViewGroup container, Bundle savedInstanceState) {
-        View root = inflater.inflate(R.layout.fragment_gallery, container, false);
+        View root = inflater.inflate(R.layout.fragment_playlist, container, false);
 
         playlistRecycler = root.findViewById(R.id.fragment_gallery_recycler);
         playlistRecycler.setLayoutManager(new GridLayoutManager(getContext(), 1, RecyclerView.VERTICAL, false));

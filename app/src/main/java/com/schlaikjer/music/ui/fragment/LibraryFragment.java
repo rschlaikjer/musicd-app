@@ -1,4 +1,4 @@
-package com.schlaikjer.music.ui.home;
+package com.schlaikjer.music.ui.fragment;
 
 import android.content.Context;
 import android.os.Bundle;
@@ -9,7 +9,6 @@ import android.view.ViewGroup;
 import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
-import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
@@ -28,9 +27,7 @@ import com.schlaikjer.music.utility.ThreadManager;
 import java.util.List;
 import java.util.Stack;
 
-public class HomeFragment extends Fragment implements AlbumSelectedListener, TrackSelectedListener {
-
-    private HomeViewModel homeViewModel;
+public class LibraryFragment extends Fragment implements AlbumSelectedListener, TrackSelectedListener {
 
     Stack<String> baseDirBackStack = new Stack<>();
     String baseDir = "";
@@ -42,9 +39,7 @@ public class HomeFragment extends Fragment implements AlbumSelectedListener, Tra
 
     public View onCreateView(@NonNull LayoutInflater inflater,
                              ViewGroup container, Bundle savedInstanceState) {
-        homeViewModel =
-                new ViewModelProvider(this).get(HomeViewModel.class);
-        View root = inflater.inflate(R.layout.fragment_home, container, false);
+        View root = inflater.inflate(R.layout.fragment_library, container, false);
 
         recyclerView = root.findViewById(R.id.fragment_home_recycler);
         recyclerView.setLayoutManager(new GridLayoutManager(getContext(), 2, RecyclerView.VERTICAL, false));
@@ -79,7 +74,7 @@ public class HomeFragment extends Fragment implements AlbumSelectedListener, Tra
             final List<Album> albums = TrackDatabase.getInstance(getContext()).getDirectoryAlbums("");
             ThreadManager.runOnUIThread(() -> {
                 fullAlbumList = albums;
-                HomeFragment.this.recyclerAdapter.setAlbumList(albums);
+                LibraryFragment.this.recyclerAdapter.setAlbumList(albums);
                 swipeRefresh.setRefreshing(false);
             });
         });
@@ -121,7 +116,7 @@ public class HomeFragment extends Fragment implements AlbumSelectedListener, Tra
 
         ThreadManager.runOnBgThread(() -> {
             final List<Album> albums = TrackDatabase.getInstance(getContext()).getDirectoryAlbums(baseDir);
-            ThreadManager.runOnUIThread(() -> HomeFragment.this.recyclerAdapter.setAlbumList(albums));
+            ThreadManager.runOnUIThread(() -> LibraryFragment.this.recyclerAdapter.setAlbumList(albums));
         });
     }
 

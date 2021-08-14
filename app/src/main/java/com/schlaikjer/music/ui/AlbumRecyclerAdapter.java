@@ -143,10 +143,10 @@ public class AlbumRecyclerAdapter extends RecyclerView.Adapter<AlbumRecyclerAdap
             // Attempt to find an already loaded image for this album
             Log.d(TAG, "Trying to load cached album art for album '" + album.name + "'");
             for (byte[] checksum : album.coverImageChecksums) {
-                Log.d(TAG, "Checking for cached content hash " + checksum);
+                Log.d(TAG, "Checking for cached content hash " + StorageManager.bytesToHex(checksum));
                 if (StorageManager.hasContentFile(_appContext, checksum)) {
                     // Try and load the image
-                    Log.d(TAG, "Using cached image content ID " + checksum);
+                    Log.d(TAG, "Using cached image content ID " + StorageManager.bytesToHex(checksum));
                     Bitmap bitmap = BitmapFactory.decodeFile(StorageManager.getContentFilePath(_appContext, checksum));
                     ThreadManager.runOnUIThread(() -> {
                         if (viewHolder.album == album) {
@@ -160,7 +160,7 @@ public class AlbumRecyclerAdapter extends RecyclerView.Adapter<AlbumRecyclerAdap
             // If no images exist on disk, try and fetch them
             Log.d(TAG, "Trying to download album art for album '" + album.name + "'");
             for (byte[] checksum : album.coverImageChecksums) {
-                Log.d(TAG, "Fetching image with content ID " + checksum);
+                Log.d(TAG, "Fetching image with content ID " + StorageManager.bytesToHex(checksum));
                 NetworkManager.fetchImage(checksum, new NetworkManager.ContentFetchCallback() {
                     @Override
                     public void onContentReceived(byte[] data) {

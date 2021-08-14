@@ -1,4 +1,4 @@
-package com.schlaikjer.music;
+package com.schlaikjer.music.ui.activity;
 
 import android.content.ComponentName;
 import android.content.Context;
@@ -26,6 +26,7 @@ import androidx.navigation.ui.NavigationUI;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.navigation.NavigationView;
 import com.google.android.material.slider.Slider;
+import com.schlaikjer.music.R;
 import com.schlaikjer.music.db.TrackDatabase;
 import com.schlaikjer.music.model.Album;
 import com.schlaikjer.music.model.Track;
@@ -78,29 +79,17 @@ public class MainActivity extends AppCompatActivity {
         setSupportActionBar(toolbar);
 
         FloatingActionButton fab = findViewById(R.id.fab);
-        fab.setOnClickListener(new View.OnClickListener() {
+        fab.setOnClickListener(v -> NetworkManager.rescanDatabase(new NetworkManager.DatabaseRescanCallback() {
             @Override
-            public void onClick(View v) {
-                if (serviceBinder == null) {
-                    Log.w(TAG, "Service binder null - cannot play");
-                    return;
-                }
-
-                NetworkManager.rescanDatabase(new NetworkManager.DatabaseRescanCallback() {
-                    @Override
-                    public void onSuccess() {
-                        Log.d(TAG, "Rescanning DB");
-                    }
-
-                    @Override
-                    public void onAbort() {
-                        Log.w(TAG, "Failed to request DB scan");
-                    }
-                });
-
-                serviceBinder.service.play();
+            public void onSuccess() {
+                Log.d(TAG, "Rescanning DB");
             }
-        });
+
+            @Override
+            public void onAbort() {
+                Log.w(TAG, "Failed to request DB scan");
+            }
+        }));
 
         DrawerLayout drawer = findViewById(R.id.drawer_layout);
 
@@ -109,7 +98,7 @@ public class MainActivity extends AppCompatActivity {
         // Passing each menu ID as a set of Ids because each
         // menu should be considered as top level destinations.
         mAppBarConfiguration = new AppBarConfiguration.Builder(
-                R.id.nav_home, R.id.nav_gallery, R.id.nav_slideshow)
+                R.id.nav_library, R.id.nav_playlist, R.id.nav_stats)
                 .setDrawerLayout(drawer)
                 .build();
 
@@ -136,6 +125,12 @@ public class MainActivity extends AppCompatActivity {
             serviceBinder.service.stop();
             return true;
         }
+
+        if (item.getItemId() == R.id.ation_prefetch_queue) {
+            ThreadManager.runOnBgThread(() -> PlaylistManager.prefetchTracks(getApplicationContext(), PlaylistManager.getPlaylist(getApplicationContext()).size()));
+            return true;
+        }
+
         if (item.getItemId() == R.id.action_add_random) {
             AlertDialog.Builder builder = new AlertDialog.Builder(this);
             builder.setCancelable(true).setTitle(R.string.add_random).setNegativeButton(R.string.cancel, (dialog, which) -> {

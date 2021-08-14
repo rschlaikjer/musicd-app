@@ -21,7 +21,7 @@ public class StorageManager {
     private static final long GIGABYTE = 1024 * 1024 * 1024;
     private static final long MAX_CACHE_SIZE_BYTES = 4 * GIGABYTE;
 
-    static String bytesToHex(byte[] data) {
+    public static String bytesToHex(byte[] data) {
         char[] hexChars = new char[data.length * 2];
         for (int j = 0; j < data.length; j++) {
             int v = data[j] & 0xFF;
@@ -31,12 +31,34 @@ public class StorageManager {
         return new String(hexChars);
     }
 
-    public static void saveContentFile(Context context, byte[] checksum, byte[] data) {
+    private static File getContentFile(Context context, byte[] checksum) {
         // Convert the checksum to hex for use as a filename
         String filename = bytesToHex(checksum);
 
+        // Bucket filename after first byte for FS pressure
+        String dirPrefix = filename.substring(0, 2);
+        String dirPostfix = filename.substring(2);
+
+        // Ensure filepath exists
+        File dir = new File(context.getFilesDir(), dirPrefix);
+        if (!dir.exists() && !dir.mkdirs()) {
+            Log.e(TAG, "Failed to mkdirs for " + dir.getAbsolutePath());
+            return null;
+        }
+
+        // Return file handle
+        return new File(dir, dirPostfix);
+    }
+
+    public static void saveContentFile(Context context, byte[] checksum, byte[] data) {
+        // Get file handle
+        File outputFile = getContentFile(context, checksum);
+        if (outputFile == null) {
+            return;
+        }
+
         // Write out the data
-        try (FileOutputStream fos = context.openFileOutput(filename, Context.MODE_PRIVATE)) {
+        try (FileOutputStream fos = new FileOutputStream(outputFile)) {
             fos.write(data);
 
             // Add a cache entry to the DB on success
@@ -56,9 +78,13 @@ public class StorageManager {
             return false;
         }
 
-        String filename = bytesToHex(checksum);
-        File file = new File(context.getFilesDir(), filename);
-        return file.exists();
+        // Get file handle
+        File contentFile = getContentFile(context, checksum);
+        if (contentFile == null) {
+            return false;
+        }
+
+        return contentFile.exists();
     }
 
     public static String getContentFilePath(Context context, byte[] checksum) {
@@ -69,8 +95,11 @@ public class StorageManager {
         // Increment access counter / time for this blob
         TrackDatabase.getInstance(context).accessCacheEntry(checksum);
 
-        String filename = bytesToHex(checksum);
-        File file = new File(context.getFilesDir(), filename);
+        File file = getContentFile(context, checksum);
+        if (file == null) {
+            throw new RuntimeException();
+        }
+
         return file.getAbsolutePath();
     }
 
