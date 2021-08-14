@@ -16,4 +16,9 @@
         android:orderInCategory="100"
         android:title="@string/prefetch_playlist"
         app:showAsAction="never" />
+    <item
+        android:id="@+id/ation_prefetch_art"
+        android:orderInCategory="100"
+        android:title="@string/prefetch_album_art"
+        app:showAsAction="never" />
 </menu>

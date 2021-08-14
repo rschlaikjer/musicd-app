@@ -156,7 +156,9 @@ public class AlbumRecyclerAdapter extends RecyclerView.Adapter<AlbumRecyclerAdap
 
         // If no images exist on disk, try and fetch them serially
         Log.d(TAG, "Trying to download album art for album '" + album.name + "'");
-        imageFetchContinuation(viewHolder, album.parent_path, album.coverImageChecksums);
+        if (!didLoadImage) {
+            imageFetchContinuation(viewHolder, album.parent_path, new ArrayList<>(album.coverImageChecksums));
+        }
 
         viewHolder.albumText.setText(viewHolder.album.name);
     }
@@ -169,6 +171,13 @@ public class AlbumRecyclerAdapter extends RecyclerView.Adapter<AlbumRecyclerAdap
 
         // Pop the first checksum
         byte[] checksum = coverImageChecksums.get(0);
+        coverImageChecksums.remove(0);
+
+        // If we already have it, we're done
+        if (StorageManager.hasContentFile(_appContext, checksum)) {
+            return;
+        }
+
         Log.d(TAG, "Fetching image with content ID " + StorageManager.bytesToHex(checksum));
         NetworkManager.fetchImage(checksum, new NetworkManager.ContentFetchCallback() {
             @Override
@@ -183,7 +192,6 @@ public class AlbumRecyclerAdapter extends RecyclerView.Adapter<AlbumRecyclerAdap
                 Log.w(TAG, "Failed to fetch art with id " + StorageManager.bytesToHex(checksum));
 
                 // Try again with next one
-                coverImageChecksums.remove(0);
                 imageFetchContinuation(holder, parent_path, coverImageChecksums);
             }
         });

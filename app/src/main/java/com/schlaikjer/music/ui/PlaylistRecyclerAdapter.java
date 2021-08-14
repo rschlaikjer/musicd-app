@@ -101,7 +101,9 @@ public class PlaylistRecyclerAdapter extends RecyclerView.Adapter<PlaylistRecycl
         }
 
         // If no images exist on disk, try and fetch them serially
-        imageFetchContinuation(viewHolder, track.checksum, imageCandidates);
+        if (!didLoadImage) {
+            imageFetchContinuation(viewHolder, track.checksum, imageCandidates);
+        }
 
         viewHolder.titleText.setText(viewHolder.track.tag_title);
         viewHolder.subtitleText.setText(viewHolder.track.tag_artist + " / " + viewHolder.track.tag_album);
@@ -121,6 +123,13 @@ public class PlaylistRecyclerAdapter extends RecyclerView.Adapter<PlaylistRecycl
 
         // Pop the first checksum
         byte[] checksum = coverImageChecksums.get(0);
+        coverImageChecksums.remove(0);
+
+        // If we already have it, we're done
+        if (StorageManager.hasContentFile(_appContext, checksum)) {
+            return;
+        }
+
         Log.d(TAG, "Fetching image with content ID " + StorageManager.bytesToHex(checksum));
         NetworkManager.fetchImage(checksum, new NetworkManager.ContentFetchCallback() {
             @Override
@@ -134,7 +143,6 @@ public class PlaylistRecyclerAdapter extends RecyclerView.Adapter<PlaylistRecycl
                 Log.w(TAG, "Failed to fetch art with id " + StorageManager.bytesToHex(checksum));
 
                 // Try again with next one
-                coverImageChecksums.remove(0);
                 if (coverImageChecksums.size() > 0) {
                     imageFetchContinuation(holder, trackChecksum, coverImageChecksums);
                 }

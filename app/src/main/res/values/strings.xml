@@ -9,6 +9,7 @@
     <string name="clear_playlist">Clear Playlist</string>
     <string name="add_random">Add Random...</string>
     <string name="prefetch_playlist">Prefetch Playlist</string>
+    <string name="prefetch_album_art">Prefetch Art</string>
     <string name="ok">OK</string>
     <string name="cancel">Cancel</string>
     <string name="unimplemented">Unimplemented</string>
