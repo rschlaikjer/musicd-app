@@ -10,6 +10,7 @@
     <string name="add_random">Add Random...</string>
     <string name="ok">OK</string>
     <string name="cancel">Cancel</string>
+    <string name="unimplemented">Unimplemented</string>
 
     <string name="menu_home">Home</string>
     <string name="menu_gallery">Gallery</string>

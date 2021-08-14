@@ -188,6 +188,20 @@ public class TrackDatabase {
         return parseTracks(c);
     }
 
+    public List<Track> getTracksForParentPath(String parent_path) {
+        SQLiteDatabase database = helper.getReadableDatabase();
+        Cursor c = database.query(
+                TrackDatabaseHelper.TracksTable.TABLE_NAME,
+                TrackDatabaseHelper.TracksTable.projection(), TrackDatabaseHelper.TracksTable.COLUMN_PARENT_PATH + " = $1", // No select
+                new String[]{parent_path}, // No select args
+                null, // Group
+                null, // Having
+                TrackDatabaseHelper.TracksTable.COLUMN_TAG_TRACK // Order
+        );
+
+        return parseTracks(c);
+    }
+
     public void addPbImages(Iterable<TrackOuterClass.Image> records) {
         SQLiteDatabase database = helper.getWritableDatabase();
         for (TrackOuterClass.Image record : records) {

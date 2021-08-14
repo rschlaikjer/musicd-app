@@ -11,6 +11,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.RadioButton;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
@@ -156,7 +157,7 @@ public class MainActivity extends AppCompatActivity {
 
                 // Random artists
                 if (artists.isChecked()) {
-                    // db.getRandomArtists(count_to_add);
+                    Toast.makeText(this, R.string.unimplemented, Toast.LENGTH_LONG).show();
                 }
 
                 // Random albums
@@ -166,7 +167,10 @@ public class MainActivity extends AppCompatActivity {
 
                     // Add all the tracks in those albums to the ingest list
                     for (Album a : albumList) {
-                        // tracksToAdd.addAll(db.getTracksForAlbum(a.parent_path));
+                        List<Track> albumTracks = db.getTracksForParentPath(a.parent_path);
+                        for (Track t : albumTracks) {
+                            tracksToAdd.add(t.checksum);
+                        }
                     }
                 }
 
