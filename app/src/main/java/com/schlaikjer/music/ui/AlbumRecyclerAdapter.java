@@ -63,7 +63,6 @@ public class AlbumRecyclerAdapter extends RecyclerView.Adapter<AlbumRecyclerAdap
     public static class ViewHolder extends RecyclerView.ViewHolder {
         public final ImageView imageView;
         public final TextView albumText;
-        public final TextView artistText;
 
         public Album album;
 
@@ -71,7 +70,6 @@ public class AlbumRecyclerAdapter extends RecyclerView.Adapter<AlbumRecyclerAdap
             super(view);
             imageView = view.findViewById(R.id.recycler_folder_image);
             albumText = view.findViewById(R.id.recycler_folder_top_text);
-            artistText = view.findViewById(R.id.recycler_folder_bottom_text);
         }
     }
 
@@ -134,10 +132,10 @@ public class AlbumRecyclerAdapter extends RecyclerView.Adapter<AlbumRecyclerAdap
         View.OnClickListener listener = v -> albumSelectedListener.onAlbumSelected(album);
         viewHolder.imageView.setOnClickListener(listener);
         viewHolder.albumText.setOnClickListener(listener);
-        viewHolder.artistText.setOnClickListener(listener);
 
         // Try and load an image
-        viewHolder.imageView.setImageDrawable(_appContext.getDrawable(R.drawable.ic_baseline_library_music_48));
+        viewHolder.imageView.setScaleType(ImageView.ScaleType.CENTER);
+        viewHolder.imageView.setImageDrawable(_appContext.getDrawable(R.drawable.ic_baseline_image_48));
 
         ThreadManager.runOnBgThread(() -> {
             // Attempt to find an already loaded image for this album
@@ -150,6 +148,7 @@ public class AlbumRecyclerAdapter extends RecyclerView.Adapter<AlbumRecyclerAdap
                     Bitmap bitmap = BitmapFactory.decodeFile(StorageManager.getContentFilePath(_appContext, checksum));
                     ThreadManager.runOnUIThread(() -> {
                         if (viewHolder.album == album) {
+                            viewHolder.imageView.setScaleType(ImageView.ScaleType.CENTER_CROP);
                             viewHolder.imageView.setImageBitmap(bitmap);
                         }
                     });
@@ -171,6 +170,7 @@ public class AlbumRecyclerAdapter extends RecyclerView.Adapter<AlbumRecyclerAdap
                         // Load to image view
                         ThreadManager.runOnUIThread(() -> {
                             if (viewHolder.album == album) {
+                                viewHolder.imageView.setScaleType(ImageView.ScaleType.CENTER_CROP);
                                 viewHolder.imageView.setImageBitmap(bitmap);
                             }
                         });
@@ -185,7 +185,6 @@ public class AlbumRecyclerAdapter extends RecyclerView.Adapter<AlbumRecyclerAdap
         });
 
         viewHolder.albumText.setText(viewHolder.album.name);
-        viewHolder.artistText.setText(viewHolder.album.artist);
     }
 
     @Override

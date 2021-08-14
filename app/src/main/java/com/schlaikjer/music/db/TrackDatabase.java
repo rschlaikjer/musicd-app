@@ -223,8 +223,8 @@ public class TrackDatabase {
         SQLiteDatabase database = helper.getReadableDatabase();
         Cursor c = database.query(
                 TrackDatabaseHelper.ImagesTable.TABLE_NAME,
-                new String[]{TrackDatabaseHelper.ImagesTable.COLUMN_CHECKSUM}, TrackDatabaseHelper.ImagesTable.COLUMN_PARENT_PATH + " = $1", // Select
-                new String[]{path}, // No select args
+                new String[]{TrackDatabaseHelper.ImagesTable.COLUMN_CHECKSUM}, TrackDatabaseHelper.ImagesTable.COLUMN_PARENT_PATH + " LIKE $1", // Select
+                new String[]{path + "%"}, // No select args
                 null, // Group
                 null, // Having
                 null // Order
