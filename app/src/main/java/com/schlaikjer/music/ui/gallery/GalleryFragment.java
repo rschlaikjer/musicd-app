@@ -1,5 +1,8 @@
 package com.schlaikjer.music.ui.gallery;
 
+import android.graphics.Canvas;
+import android.graphics.Paint;
+import android.graphics.RectF;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -8,8 +11,10 @@ import android.widget.ImageButton;
 import android.widget.SeekBar;
 
 import androidx.annotation.NonNull;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.GridLayoutManager;
+import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.schlaikjer.music.MainActivity;
@@ -37,6 +42,8 @@ public class GalleryFragment extends Fragment implements PlaylistManager.Playlis
     private RecyclerView playlistRecycler;
     private PlaylistRecyclerAdapter recyclerAdapter;
 
+    private Paint paint = new Paint();
+
     private MainActivity getMainActivity() {
         return (MainActivity) getActivity();
     }
@@ -48,9 +55,51 @@ public class GalleryFragment extends Fragment implements PlaylistManager.Playlis
 
         playlistRecycler = root.findViewById(R.id.fragment_gallery_recycler);
         playlistRecycler.setLayoutManager(new GridLayoutManager(getContext(), 1, RecyclerView.VERTICAL, false));
-        recyclerAdapter = new PlaylistRecyclerAdapter(getContext());
+        recyclerAdapter = new PlaylistRecyclerAdapter(getContext(), new PlaylistRecyclerAdapter.TrackSelectedListener() {
+            @Override
+            public void onTrackSelected(int position, byte[] track) {
+                getMainActivity().getMediaService().play(position);
+            }
+        });
         recyclerAdapter.setPlaylist(PlaylistManager.getPlaylistTracks(getContext()));
+        playlistRecycler.setHasFixedSize(true);
         playlistRecycler.setAdapter(recyclerAdapter);
+
+        ItemTouchHelper.SimpleCallback simpleItemTouchCallback = new ItemTouchHelper.SimpleCallback(ItemTouchHelper.LEFT | ItemTouchHelper.RIGHT, ItemTouchHelper.LEFT | ItemTouchHelper.RIGHT) {
+
+            @Override
+            public boolean onMove(RecyclerView recyclerView, RecyclerView.ViewHolder viewHolder, RecyclerView.ViewHolder target) {
+                return false;
+            }
+
+            @Override
+            public void onSwiped(RecyclerView.ViewHolder viewHolder, int swipeDir) {
+                //Remove swiped item from list and notify the RecyclerView
+                int position = viewHolder.getAdapterPosition();
+                // Only notify if the removed track is the currently playing track, since otherwise our own notify listener triggers and reloads the entire list, which is visually jarring
+                boolean shouldNotify = position == 0;
+                PlaylistManager.removeIndex(getContext(), position, shouldNotify);
+                recyclerAdapter.removeItem(position);
+            }
+
+            @Override
+            public void onChildDraw(Canvas c, RecyclerView recyclerView, RecyclerView.ViewHolder viewHolder, float dX, float dY, int actionState, boolean isCurrentlyActive) {
+                if (actionState == ItemTouchHelper.ACTION_STATE_SWIPE) {
+                    View itemView = viewHolder.itemView;
+                    RectF background;
+                    if (dX > 0) {
+                        background = new RectF((float) itemView.getLeft(), (float) itemView.getTop(), dX, (float) itemView.getBottom());
+                    } else {
+                        background = new RectF((float) itemView.getRight() + dX, (float) itemView.getTop(), (float) itemView.getRight(), (float) itemView.getBottom());
+                    }
+                    paint.setColor(ContextCompat.getColor(getContext(), R.color.swipe_remove));
+                    c.drawRect(background, paint);
+                }
+                super.onChildDraw(c, recyclerView, viewHolder, dX, dY, actionState, isCurrentlyActive);
+            }
+        };
+        ItemTouchHelper itemTouchHelper = new ItemTouchHelper(simpleItemTouchCallback);
+        itemTouchHelper.attachToRecyclerView(playlistRecycler);
 
         // Find controls views
         controls = new ControlViews();

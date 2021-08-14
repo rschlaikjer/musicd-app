@@ -18,5 +18,8 @@
     <color name="colorTextBackgroundPrimary_orange">#E3E3E3</color>
     <color name="colorNavheaderIcon_orange">#000000</color>
 
+    <color name="swipe_remove">#ff8a80</color>
+
+    <color name="md_grey_400">#bdbdbd</color>
 
 </resources>

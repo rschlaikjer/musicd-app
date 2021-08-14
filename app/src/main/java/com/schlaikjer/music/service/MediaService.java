@@ -21,10 +21,9 @@ import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.util.List;
 
-public class MediaService extends Service implements MediaPlayer.OnErrorListener, MediaPlayer.OnCompletionListener, MediaPlayer.OnPreparedListener {
+public class MediaService extends Service implements MediaPlayer.OnErrorListener, MediaPlayer.OnCompletionListener, MediaPlayer.OnPreparedListener, PlaylistManager.PlaylistChangedListener {
 
     private static final String TAG = MainActivity.class.getSimpleName();
-
 
     public class MediaServiceBinder extends Binder {
 
@@ -38,6 +37,9 @@ public class MediaService extends Service implements MediaPlayer.OnErrorListener
 
     MediaPlayer player;
     boolean playerPrepared = false;
+    boolean isPlaying = false;
+    int playIndex = 0;
+    byte[] currentTrack;
 
     @Nullable
     @Override
@@ -53,6 +55,8 @@ public class MediaService extends Service implements MediaPlayer.OnErrorListener
         player.setOnErrorListener(this);
         player.setOnCompletionListener(this);
         player.setOnPreparedListener(this);
+
+        PlaylistManager.addOnPlaylistChangedListener(this);
     }
 
     @Override
@@ -61,6 +65,30 @@ public class MediaService extends Service implements MediaPlayer.OnErrorListener
         player.release();
 
         super.onDestroy();
+    }
+
+    @Override
+    public void onPlaylistChanged() {
+        // If we weren't playing before, no need to react
+        if (!isPlaying) {
+            return;
+        }
+
+        // If we were playing, rescan the playlist for the currently playing content ID and update our play index
+        List<byte[]> playlist = PlaylistManager.getPlaylist(this);
+        boolean trackFound = false;
+        for (int i = 0; i < playlist.size(); i++) {
+            if (playlist.get(i).equals(currentTrack)) {
+                playIndex = i;
+                trackFound = true;
+                break;
+            }
+        }
+
+        // If we couldn't find the track we were playing, it must have been removed - stop.
+        if (!trackFound) {
+            stop();
+        }
     }
 
     public boolean next() {
@@ -94,16 +122,24 @@ public class MediaService extends Service implements MediaPlayer.OnErrorListener
     }
 
     public boolean play() {
+        return play(0);
+    }
+
+    public boolean play(int index) {
         // Fetch current playlist
         List<byte[]> playlist = PlaylistManager.getPlaylist(this);
 
-        // If it's empty, nothing to play
-        if (playlist.size() == 0) {
+        // If it's empty, or the index is OOB, nothing to play
+        if (playlist.size() == 0 || index >= playlist.size()) {
             return false;
         }
 
-        // Get the first track
-        byte[] trackChecksum = playlist.get(0);
+
+        // Get the track to play
+        isPlaying = true;
+        playIndex = index;
+        byte[] trackChecksum = playlist.get(playIndex);
+        currentTrack = trackChecksum;
 
         // Do we have this file cached?
         if (StorageManager.hasContentFile(this, trackChecksum)) {
@@ -120,6 +156,7 @@ public class MediaService extends Service implements MediaPlayer.OnErrorListener
                 player.setDataSource(trackPath);
             } catch (IOException e) {
                 e.printStackTrace();
+                isPlaying = false;
                 return false;
             }
 
@@ -139,12 +176,13 @@ public class MediaService extends Service implements MediaPlayer.OnErrorListener
                 // If the service still exists, ask it to play
                 MediaService service = serviceRef.get();
                 if (service != null) {
-                    service.play();
+                    service.play(index);
                 }
             }
 
             @Override
             public void onAbort() {
+                isPlaying = false;
             }
         });
 
@@ -167,6 +205,7 @@ public class MediaService extends Service implements MediaPlayer.OnErrorListener
     public boolean onError(MediaPlayer mp, int what, int extra) {
         Log.w(TAG, "Media player error: " + what + ", extra: " + extra);
         playerPrepared = false;
+        isPlaying = false;
         return false;
     }
 
@@ -177,11 +216,14 @@ public class MediaService extends Service implements MediaPlayer.OnErrorListener
      */
     @Override
     public void onCompletion(MediaPlayer mp) {
+        // No longer playing
+        isPlaying = false;
+
         // Pop the front of the playlist
-        PlaylistManager.popFront(this);
+        PlaylistManager.removeIndex(this, playIndex, true);
 
         // Try and play the next track
-        play();
+        play(playIndex);
     }
 
     /**

@@ -29,6 +29,7 @@ public class PlaylistRecyclerAdapter extends RecyclerView.Adapter<PlaylistRecycl
     private List<Track> _tracks;
 
     public static class ViewHolder extends RecyclerView.ViewHolder {
+        public final View rootView;
         public final ImageView imageView;
         public final TextView titleText;
         public final TextView subtitleText;
@@ -37,20 +38,33 @@ public class PlaylistRecyclerAdapter extends RecyclerView.Adapter<PlaylistRecycl
 
         public ViewHolder(View view) {
             super(view);
+            rootView = view;
             imageView = view.findViewById(R.id.recycler_folder_image);
             titleText = view.findViewById(R.id.recycler_folder_top_text);
             subtitleText = view.findViewById(R.id.recycler_folder_bottom_text);
         }
     }
 
-    public PlaylistRecyclerAdapter(Context context) {
+    public interface TrackSelectedListener {
+        void onTrackSelected(int position, byte[] track);
+    }
+
+    TrackSelectedListener trackSelectedListener;
+
+    public PlaylistRecyclerAdapter(Context context, TrackSelectedListener listener) {
         this._appContext = context.getApplicationContext();
+        this.trackSelectedListener = listener;
         setPlaylist(new ArrayList<>());
     }
 
     public void setPlaylist(List<Track> tracks) {
         _tracks = tracks;
         notifyDataSetChanged();
+    }
+
+    public void removeItem(int position) {
+        _tracks.remove(position);
+        notifyItemRemoved(position);
     }
 
     @Override
@@ -112,6 +126,12 @@ public class PlaylistRecyclerAdapter extends RecyclerView.Adapter<PlaylistRecycl
 
         viewHolder.titleText.setText(viewHolder.track.tag_title);
         viewHolder.subtitleText.setText(viewHolder.track.tag_artist + " / " + viewHolder.track.tag_album);
+        viewHolder.rootView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                trackSelectedListener.onTrackSelected(position, track.checksum);
+            }
+        });
     }
 
     @Override

@@ -7,6 +7,7 @@ import com.schlaikjer.music.model.Track;
 
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 public class PlaylistManager {
@@ -29,9 +30,11 @@ public class PlaylistManager {
         ThreadManager.runOnUIThread(new Runnable() {
             @Override
             public void run() {
-                for (WeakReference<PlaylistChangedListener> listener : playlistChangedListeners) {
+                Iterator<WeakReference<PlaylistChangedListener>> it = playlistChangedListeners.iterator();
+                while (it.hasNext()) {
+                    WeakReference<PlaylistChangedListener> listener = it.next();
                     if (listener.get() == null) {
-                        playlistChangedListeners.remove(listener);
+                        it.remove();
                     } else {
                         listener.get().onPlaylistChanged();
                     }
@@ -92,6 +95,18 @@ public class PlaylistManager {
         cachePlaylist(context);
         prefetchTracks(context);
         notifyPlaylistChanged();
+        return currentPlaylist;
+    }
+
+    public static List<byte[]> removeIndex(Context context, int index, boolean notify) {
+        getPlaylist(context);
+        if (index < currentPlaylist.size()) {
+            currentPlaylist.remove(index);
+        }
+        cachePlaylist(context);
+        if (notify) {
+            notifyPlaylistChanged();
+        }
         return currentPlaylist;
     }
 
