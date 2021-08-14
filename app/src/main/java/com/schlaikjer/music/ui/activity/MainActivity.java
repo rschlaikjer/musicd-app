@@ -23,7 +23,6 @@ import androidx.navigation.Navigation;
 import androidx.navigation.ui.AppBarConfiguration;
 import androidx.navigation.ui.NavigationUI;
 
-import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.navigation.NavigationView;
 import com.google.android.material.slider.Slider;
 import com.schlaikjer.music.R;
@@ -31,7 +30,6 @@ import com.schlaikjer.music.db.TrackDatabase;
 import com.schlaikjer.music.model.Album;
 import com.schlaikjer.music.model.Track;
 import com.schlaikjer.music.service.MediaService;
-import com.schlaikjer.music.utility.NetworkManager;
 import com.schlaikjer.music.utility.PlaylistManager;
 import com.schlaikjer.music.utility.StorageManager;
 import com.schlaikjer.music.utility.ThreadManager;
@@ -77,19 +75,6 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
-
-        FloatingActionButton fab = findViewById(R.id.fab);
-        fab.setOnClickListener(v -> NetworkManager.rescanDatabase(new NetworkManager.DatabaseRescanCallback() {
-            @Override
-            public void onSuccess() {
-                Log.d(TAG, "Rescanning DB");
-            }
-
-            @Override
-            public void onAbort() {
-                Log.w(TAG, "Failed to request DB scan");
-            }
-        }));
 
         DrawerLayout drawer = findViewById(R.id.drawer_layout);
 
