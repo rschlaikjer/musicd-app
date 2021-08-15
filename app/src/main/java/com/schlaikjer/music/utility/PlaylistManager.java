@@ -17,7 +17,7 @@ public class PlaylistManager {
 
     private static List<byte[]> currentPlaylist = null;
 
-    private static final int TRACK_PREFETCH_LEN = 4;
+    public static final int TRACK_PREFETCH_LEN = 4;
 
     private static List<WeakReference<PlaylistChangedListener>> playlistChangedListeners = new ArrayList<>();
 
@@ -147,7 +147,11 @@ public class PlaylistManager {
     }
 
     public static void prefetchTracks(Context context, int prefetch_lookahead) {
-        for (int i = 0; i < currentPlaylist.size() && i < prefetch_lookahead; i++) {
+        prefetchTracks(context, prefetch_lookahead, 0);
+    }
+
+    public static void prefetchTracks(Context context, int prefetch_lookahead, int offset) {
+        for (int i = offset; i < currentPlaylist.size() && i < offset + prefetch_lookahead; i++) {
             final byte[] checksum = currentPlaylist.get(i);
             if (!StorageManager.hasContentFile(context, checksum)) {
                 Log.d(TAG, "Prefetching track " + StorageManager.bytesToHex(checksum));

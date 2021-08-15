@@ -235,6 +235,9 @@ public class MediaService extends Service implements MediaPlayer.OnErrorListener
         // Pop the front of the playlist
         PlaylistManager.removeIndex(this, playIndex, true);
 
+        // Try and precache from our current play index
+        PlaylistManager.prefetchTracks(this, PlaylistManager.TRACK_PREFETCH_LEN, playIndex);
+
         // Try and play the next track
         play(playIndex);
     }
@@ -248,6 +251,9 @@ public class MediaService extends Service implements MediaPlayer.OnErrorListener
     public void onPrepared(MediaPlayer mp) {
         playerPrepared = true;
         player.start();
+
+        // Preload next few tracks in playlist
+        PlaylistManager.prefetchTracks(this, PlaylistManager.TRACK_PREFETCH_LEN, playIndex);
     }
 
 }

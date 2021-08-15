@@ -17,9 +17,9 @@ import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.schlaikjer.music.ui.activity.MainActivity;
 import com.schlaikjer.music.R;
 import com.schlaikjer.music.ui.PlaylistRecyclerAdapter;
+import com.schlaikjer.music.ui.activity.MainActivity;
 import com.schlaikjer.music.utility.PlaylistManager;
 
 public class PlaylistFragment extends Fragment implements PlaylistManager.PlaylistChangedListener {
@@ -27,6 +27,7 @@ public class PlaylistFragment extends Fragment implements PlaylistManager.Playli
     @Override
     public void onPlaylistChanged() {
         recyclerAdapter.setPlaylist(PlaylistManager.getPlaylistTracks(getContext()));
+        recyclerAdapter.notifyDataSetChanged();
     }
 
     class ControlViews {
@@ -71,10 +72,7 @@ public class PlaylistFragment extends Fragment implements PlaylistManager.Playli
             public void onSwiped(RecyclerView.ViewHolder viewHolder, int swipeDir) {
                 //Remove swiped item from list and notify the RecyclerView
                 int position = viewHolder.getAdapterPosition();
-                // Only notify if the removed track is the currently playing track, since otherwise our own notify listener triggers and reloads the entire list, which is visually jarring
-                boolean shouldNotify = position == 0;
-                PlaylistManager.removeIndex(getContext(), position, shouldNotify);
-                recyclerAdapter.removeItem(position);
+                PlaylistManager.removeIndex(getContext(), position, true);
             }
 
             @Override
