@@ -373,7 +373,7 @@ public class TrackDatabase {
             album.name = baseChild;
 
             // For each album, fetch the set of content addresses for images that could be used as covers
-            album.coverImageChecksums = getImageChecksumsForParentPath(parentPath);
+            album.coverImageChecksums = getImageChecksumsForParentPath(album.parent_path);
 
             albums.add(album);
             c.moveToNext();
