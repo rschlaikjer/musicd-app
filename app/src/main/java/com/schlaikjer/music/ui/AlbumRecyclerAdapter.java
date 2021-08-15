@@ -2,6 +2,7 @@ package com.schlaikjer.music.ui;
 
 import android.content.Context;
 import android.util.Log;
+import android.view.ContextMenu;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -24,7 +25,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 
-public class AlbumRecyclerAdapter extends RecyclerView.Adapter<AlbumRecyclerAdapter.ViewHolder> implements SectionIndexer {
+public class AlbumRecyclerAdapter extends RecyclerView.Adapter<AlbumRecyclerAdapter.ViewHolder> implements SectionIndexer, View.OnCreateContextMenuListener {
 
     private static final String TAG = AlbumRecyclerAdapter.class.getSimpleName();
 
@@ -32,6 +33,8 @@ public class AlbumRecyclerAdapter extends RecyclerView.Adapter<AlbumRecyclerAdap
     private List<Album> _albums;
     private String[] _albumSections;
     private Integer[] _albumSectionOffsets;
+
+    private Album selectedAlbum;
 
     AlbumSelectedListener albumSelectedListener;
     TrackSelectedListener trackSelectedListener;
@@ -58,7 +61,13 @@ public class AlbumRecyclerAdapter extends RecyclerView.Adapter<AlbumRecyclerAdap
         return section;
     }
 
+    @Override
+    public void onCreateContextMenu(ContextMenu menu, View v, ContextMenu.ContextMenuInfo menuInfo) {
+
+    }
+
     public static class ViewHolder extends RecyclerView.ViewHolder {
+        public final View rootView;
         public final ImageView imageView;
         public final TextView albumText;
 
@@ -66,6 +75,7 @@ public class AlbumRecyclerAdapter extends RecyclerView.Adapter<AlbumRecyclerAdap
 
         public ViewHolder(View view) {
             super(view);
+            rootView = view;
             imageView = view.findViewById(R.id.recycler_folder_image);
             albumText = view.findViewById(R.id.recycler_folder_top_text);
         }
@@ -122,6 +132,10 @@ public class AlbumRecyclerAdapter extends RecyclerView.Adapter<AlbumRecyclerAdap
         return new ViewHolder(view);
     }
 
+    public Album getSelectedAlbum() {
+        return selectedAlbum;
+    }
+
     @Override
     public void onBindViewHolder(ViewHolder viewHolder, final int position) {
         final Album album = _albums.get(position);
@@ -131,8 +145,15 @@ public class AlbumRecyclerAdapter extends RecyclerView.Adapter<AlbumRecyclerAdap
         Picasso.get().cancelRequest(viewHolder.imageView);
 
         View.OnClickListener listener = v -> albumSelectedListener.onAlbumSelected(album);
-        viewHolder.imageView.setOnClickListener(listener);
-        viewHolder.albumText.setOnClickListener(listener);
+        viewHolder.rootView.setOnClickListener(listener);
+        viewHolder.rootView.setOnLongClickListener(new View.OnLongClickListener() {
+            @Override
+            public boolean onLongClick(View v) {
+                selectedAlbum = album;
+                return false;
+            }
+        });
+        viewHolder.rootView.setOnCreateContextMenuListener(this);
 
         // Attempt to find an already loaded image for this album
         Log.d(TAG, "Trying to load cached album art for album '" + album.name + "'");

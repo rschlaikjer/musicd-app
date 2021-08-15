@@ -99,6 +99,21 @@ public class PlaylistManager {
         return currentPlaylist;
     }
 
+    public static List<byte[]> insert(Context context, List<byte[]> tracks, int index) {
+        if (currentPlaylist == null) {
+            getPlaylist(context);
+        }
+        if (currentPlaylist.size() < index) {
+            index = currentPlaylist.size();
+        }
+        currentPlaylist.addAll(index, tracks);
+
+        cachePlaylist(context);
+        prefetchTracks(context);
+        notifyPlaylistChanged();
+        return currentPlaylist;
+    }
+
     public static List<byte[]> removeIndex(Context context, int index, boolean notify) {
         getPlaylist(context);
         if (index < currentPlaylist.size()) {

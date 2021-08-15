@@ -3,12 +3,16 @@ package com.schlaikjer.music.ui.fragment;
 import android.app.Activity;
 import android.content.Context;
 import android.os.Bundle;
+import android.view.ContextMenu;
 import android.view.LayoutInflater;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 
 import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -22,10 +26,13 @@ import com.schlaikjer.music.listener.TrackSelectedListener;
 import com.schlaikjer.music.model.Album;
 import com.schlaikjer.music.model.Track;
 import com.schlaikjer.music.ui.AlbumRecyclerAdapter;
+import com.schlaikjer.music.ui.activity.MainActivity;
 import com.schlaikjer.music.utility.NetworkManager;
+import com.schlaikjer.music.utility.PlaylistManager;
 import com.schlaikjer.music.utility.StorageManager;
 import com.schlaikjer.music.utility.ThreadManager;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Stack;
 
@@ -48,6 +55,7 @@ public class LibraryFragment extends Fragment implements AlbumSelectedListener, 
         recyclerAdapter = new AlbumRecyclerAdapter(getContext(), this, this);
         recyclerView.setAdapter(recyclerAdapter);
 
+        registerForContextMenu(recyclerView);
 
         final SwipeRefreshLayout swipeRefresh = root.findViewById(R.id.fragment_home_swipe_refresh);
         final Context appContext = root.getContext().getApplicationContext();
@@ -137,6 +145,47 @@ public class LibraryFragment extends Fragment implements AlbumSelectedListener, 
         });
 
         return root;
+    }
+
+    private MainActivity getMainActivity() {
+        return (MainActivity) getActivity();
+    }
+
+    @Override
+    public boolean onContextItemSelected(@NonNull MenuItem item) {
+        Album album = recyclerAdapter.getSelectedAlbum();
+        if (album == null) {
+            return super.onContextItemSelected(item);
+        }
+
+        // Get all the tracks below this album
+        List<Track> tracks = TrackDatabase.getInstance(getContext()).getTracksForParentPathRecursive(album.parent_path);
+        List<byte[]> trackIds = new ArrayList<>();
+        for (Track track : tracks) {
+            trackIds.add(track.checksum);
+        }
+
+        if (item.getItemId() == R.id.action_play_next) {
+            PlaylistManager.insert(getContext(), trackIds, getMainActivity().getMediaService().getPlayIndex() +1);
+            return true;
+        } else if (item.getItemId() == R.id.action_add_to_playlist) {
+            PlaylistManager.append(getContext(), trackIds);
+            return true;
+        } else {
+            return super.onContextItemSelected(item);
+        }
+    }
+
+    @Override
+    public void onCreateContextMenu(@NonNull ContextMenu menu, @NonNull View v, @Nullable ContextMenu.ContextMenuInfo menuInfo) {
+        // If the menu request isn't for the recycler view, do nothing
+        if (v != recyclerView) {
+            super.onCreateContextMenu(menu, v, menuInfo);
+            return;
+        }
+
+        MenuInflater inflater = getActivity().getMenuInflater();
+        inflater.inflate(R.menu.album_long_press, menu);
     }
 
     @Override

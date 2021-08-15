@@ -124,6 +124,13 @@ public class MediaService extends Service implements MediaPlayer.OnErrorListener
         return true;
     }
 
+    public int getPlayIndex() {
+        if (isPlaying) {
+            return playIndex;
+        }
+        return 0;
+    }
+
     public boolean play() {
         return play(0);
     }

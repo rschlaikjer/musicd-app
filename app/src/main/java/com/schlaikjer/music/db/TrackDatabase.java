@@ -196,7 +196,21 @@ public class TrackDatabase {
                 new String[]{parent_path}, // No select args
                 null, // Group
                 null, // Having
-                TrackDatabaseHelper.TracksTable.COLUMN_TAG_TRACK // Order
+                TrackDatabaseHelper.TracksTable.COLUMN_TAG_ALBUM + ", " + TrackDatabaseHelper.TracksTable.COLUMN_TAG_TRACK // Order
+        );
+
+        return parseTracks(c);
+    }
+
+    public List<Track> getTracksForParentPathRecursive(String parent_path) {
+        SQLiteDatabase database = helper.getReadableDatabase();
+        Cursor c = database.query(
+                TrackDatabaseHelper.TracksTable.TABLE_NAME,
+                TrackDatabaseHelper.TracksTable.projection(), TrackDatabaseHelper.TracksTable.COLUMN_PARENT_PATH + " LIKE $1", // No select
+                new String[]{parent_path + '%'}, // No select args
+                null, // Group
+                null, // Having
+                TrackDatabaseHelper.TracksTable.COLUMN_TAG_ALBUM + ", " + TrackDatabaseHelper.TracksTable.COLUMN_TAG_TRACK // Order
         );
 
         return parseTracks(c);
@@ -318,8 +332,9 @@ public class TrackDatabase {
                 new String[]{
                         TrackDatabaseHelper.TracksTable.COLUMN_PARENT_PATH,
                 },
-                TrackDatabaseHelper.TracksTable.COLUMN_PARENT_PATH + " LIKE $1", // No select
-                new String[]{basedir + "%"}, // No select args
+                // Select tracks that are in subdirectories of the basedir but not the basedir itself
+                TrackDatabaseHelper.TracksTable.COLUMN_PARENT_PATH + " LIKE $1 AND " + TrackDatabaseHelper.TracksTable.COLUMN_PARENT_PATH  + " != $2" ,
+                new String[]{basedir + "%", basedir},
                 TrackDatabaseHelper.TracksTable.COLUMN_PARENT_PATH, // Group
                 null, // Having
                 null, // Order
@@ -349,7 +364,11 @@ public class TrackDatabase {
 
             prefixSet.add(baseChild);
             Album album = new Album();
-            album.parent_path = basedir + baseChild;
+            if (basedir.length() > 0) {
+                album.parent_path = basedir + "/" + baseChild;
+            } else {
+                album.parent_path = baseChild;
+            }
             album.artist = baseChild;
             album.name = baseChild;
 
