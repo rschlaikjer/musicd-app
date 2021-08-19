@@ -241,7 +241,7 @@ public class TrackDatabase {
                 new String[]{path + "%"}, // No select args
                 null, // Group
                 null, // Having
-                null // Order
+                "LENGTH(" + TrackDatabaseHelper.ImagesTable.COLUMN_RAW_PATH + ") - LENGTH(REPLACE(" + TrackDatabaseHelper.ImagesTable.COLUMN_RAW_PATH + ", '/', '')) ASC" // Order
         );
 
         List<byte[]> checksums = new ArrayList<>();
@@ -333,7 +333,7 @@ public class TrackDatabase {
                         TrackDatabaseHelper.TracksTable.COLUMN_PARENT_PATH,
                 },
                 // Select tracks that are in subdirectories of the basedir but not the basedir itself
-                TrackDatabaseHelper.TracksTable.COLUMN_PARENT_PATH + " LIKE $1 AND " + TrackDatabaseHelper.TracksTable.COLUMN_PARENT_PATH  + " != $2" ,
+                TrackDatabaseHelper.TracksTable.COLUMN_PARENT_PATH + " LIKE $1 AND " + TrackDatabaseHelper.TracksTable.COLUMN_PARENT_PATH + " != $2",
                 new String[]{basedir + "%", basedir},
                 TrackDatabaseHelper.TracksTable.COLUMN_PARENT_PATH, // Group
                 null, // Having
