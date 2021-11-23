@@ -58,7 +58,7 @@ public class StatsFragment extends Fragment {
 
 
         // Set cache byte size text
-        int cacheSize = TrackDatabase.getInstance(getContext()).getCacheSize();
+        long cacheSize = TrackDatabase.getInstance(getContext()).getCacheSize();
         cacheSizeText.setText(getResources().getString(R.string.cache_size_s, formatByteSize(cacheSize)));
 
         // Rescan DB button

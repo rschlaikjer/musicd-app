@@ -1,11 +1,15 @@
 package com.schlaikjer.music.service;
 
 import android.app.Service;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
+import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.os.Binder;
 import android.os.IBinder;
+import android.os.PowerManager;
 import android.util.Log;
 
 import androidx.annotation.Nullable;
@@ -23,6 +27,7 @@ import java.util.List;
 public class MediaService extends Service implements MediaPlayer.OnErrorListener, MediaPlayer.OnCompletionListener, MediaPlayer.OnPreparedListener, PlaylistManager.PlaylistChangedListener {
 
     private static final String TAG = MediaService.class.getSimpleName();
+    private static final String WAKELOCK_TAG = MediaService.class.getSimpleName();
 
     public class MediaServiceBinder extends Binder {
 
@@ -34,11 +39,43 @@ public class MediaService extends Service implements MediaPlayer.OnErrorListener
 
     }
 
+
     MediaPlayer player;
     boolean playerPrepared = false;
     boolean isPlaying = false;
     int playIndex = 0;
     byte[] currentTrack;
+
+    PowerManager.WakeLock wakeLock;
+
+    private class BecomingNoisyReceiver extends BroadcastReceiver {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            stop();
+        }
+    }
+
+    private IntentFilter noisyIntentFilter = new IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY);
+    private BecomingNoisyReceiver becomingNoisyReceiver = new BecomingNoisyReceiver();
+
+
+    private void onPlayStateChanged() {
+        if (isPlaying) {
+            // Acquire a wakelock if we don't have one already
+            if (!wakeLock.isHeld()) {
+                wakeLock.acquire();
+            }
+
+            // Register headphone disconnect receiver
+            registerReceiver(becomingNoisyReceiver, noisyIntentFilter);
+        } else {
+            // Free a wakelock if we did hold one
+            if (wakeLock.isHeld()) {
+                wakeLock.release();
+            }
+            unregisterReceiver(becomingNoisyReceiver);
+        }
+    }
 
     @Nullable
     @Override
@@ -55,6 +92,9 @@ public class MediaService extends Service implements MediaPlayer.OnErrorListener
         player.setOnCompletionListener(this);
         player.setOnPreparedListener(this);
 
+        PowerManager powerManager = (PowerManager) getSystemService(POWER_SERVICE);
+        wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, WAKELOCK_TAG);
+
         PlaylistManager.addOnPlaylistChangedListener(this);
     }
 
@@ -62,6 +102,11 @@ public class MediaService extends Service implements MediaPlayer.OnErrorListener
     public void onDestroy() {
         // Clean up media player
         player.release();
+
+        // Ensure any held wakelock is released
+        if (wakeLock.isHeld()) {
+            wakeLock.release();
+        }
 
         super.onDestroy();
     }
@@ -121,6 +166,8 @@ public class MediaService extends Service implements MediaPlayer.OnErrorListener
         }
         player.stop();
 
+        onPlayStateChanged();
+
         return true;
     }
 
@@ -156,6 +203,7 @@ public class MediaService extends Service implements MediaPlayer.OnErrorListener
         playIndex = index;
         byte[] trackChecksum = playlist.get(playIndex);
         currentTrack = trackChecksum;
+        onPlayStateChanged();
 
         // Do we have this file cached?
         if (StorageManager.hasContentFile(this, trackChecksum)) {
@@ -173,6 +221,7 @@ public class MediaService extends Service implements MediaPlayer.OnErrorListener
             } catch (IOException e) {
                 e.printStackTrace();
                 isPlaying = false;
+                onPlayStateChanged();
                 return false;
             }
 
@@ -200,6 +249,7 @@ public class MediaService extends Service implements MediaPlayer.OnErrorListener
             @Override
             public void onAbort() {
                 isPlaying = false;
+                onPlayStateChanged();
             }
         });
 
@@ -223,6 +273,7 @@ public class MediaService extends Service implements MediaPlayer.OnErrorListener
         Log.w(TAG, "Media player error: " + what + ", extra: " + extra);
         playerPrepared = false;
         isPlaying = false;
+        onPlayStateChanged();
         return false;
     }
 
@@ -238,6 +289,7 @@ public class MediaService extends Service implements MediaPlayer.OnErrorListener
         // No longer playing
         isPlaying = false;
         playerPrepared = false;
+        onPlayStateChanged();
 
         // Pop the front of the playlist
         PlaylistManager.removeIndex(this, playIndex, true);

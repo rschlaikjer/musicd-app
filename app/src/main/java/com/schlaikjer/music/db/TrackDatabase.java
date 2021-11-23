@@ -439,14 +439,20 @@ public class TrackDatabase {
         database.execSQL("UPDATE " + TrackDatabaseHelper.CacheTable.TABLE_NAME + " SET " + TrackDatabaseHelper.CacheTable.COLUMN_ACCESS_COUNT + " = " + TrackDatabaseHelper.CacheTable.COLUMN_ACCESS_COUNT + " + 1, " + TrackDatabaseHelper.CacheTable.COLUMN_LAST_ACCESS_TIME + " = $1 WHERE " + TrackDatabaseHelper.CacheTable.COLUMN_CHECKSUM + " = $2", new Object[]{System.currentTimeMillis(), hash});
     }
 
-    public int getCacheSize() {
+    public long getCacheSize() {
         // Select all cache entries, order by least recently accessed
         SQLiteDatabase database = helper.getReadableDatabase();
         Cursor c = database.rawQuery("SELECT SUM(" + TrackDatabaseHelper.CacheTable.COLUMN_SIZE_BYTES + ") FROM " + TrackDatabaseHelper.CacheTable.TABLE_NAME, new String[]{});
         c.moveToFirst();
-        int size = c.getInt(0);
+        long size = c.getLong(0);
         c.close();
         return size;
+    }
+
+    public void deleteCacheEntry(byte[] checksum) {
+        SQLiteDatabase database = helper.getWritableDatabase();
+        database.execSQL("DELETE FROM " +
+                TrackDatabaseHelper.CacheTable.TABLE_NAME + " WHERE " + TrackDatabaseHelper.CacheTable.COLUMN_CHECKSUM + " = $1", new Object[]{checksum});
     }
 
     public List<CacheEntry> getCacheEntries() {

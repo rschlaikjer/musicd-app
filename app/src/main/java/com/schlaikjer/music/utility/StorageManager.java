@@ -191,6 +191,9 @@ public class StorageManager {
                 Log.i(TAG, "Gc'd cache entry " + entry.path + ", atime: " + entry.lastAccessTime + ", access count: " + entry.accessCount + ", size: " + entry.sizeBytes);
             }
 
+            // Delete cache entry line item
+            TrackDatabase.getInstance(context).deleteCacheEntry(entry.checksum);
+
             // Decrement cache size
             cacheSizeTotal -= entry.sizeBytes;
         }
